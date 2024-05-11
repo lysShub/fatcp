@@ -1,0 +1,6 @@
+.vscode
+*.pss
+*.pcap
+*.exe
+*.log
+*.out
