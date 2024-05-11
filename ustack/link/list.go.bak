@@ -1,0 +1,158 @@
+
+type heap struct {
+	list    []*stack.PacketBuffer
+	i, n    int
+	listMu  sync.RWMutex
+	writeCh chan struct{}
+}
+
+func newHeap(size int) *heap {
+	return &heap{
+		list:    make([]*stack.PacketBuffer, size),
+		writeCh: make(chan struct{}, size),
+	}
+}
+
+func (l *heap) Put(pkb *stack.PacketBuffer) (ok bool) {
+	i := -1
+	l.listMu.RLock()
+	{
+		if n := len(l.list); n == 0 {
+			i = l.i
+		} else if l.n == n {
+			// todo: 丢弃tail pkb
+		} else {
+			for i = l.i; i < len(l.list); i++ {
+				if l.list[i] != nil {
+					break
+				}
+			}
+			for i = 0; i < l.i; i++ {
+				if l.list[i] != nil {
+					break
+				}
+			}
+		}
+	}
+	l.listMu.RUnlock()
+	if i < 0 {
+		return false
+	}
+
+	l.listMu.Lock()
+	defer l.listMu.Unlock()
+	if l.list[i].IsNil() {
+		l.n++
+		l.list[i] = pkb.IncRef()
+
+		select {
+		case l.writeCh <- struct{}{}:
+		default:
+		}
+		return true
+	} else {
+		return false
+	}
+}
+
+func (l *heap) Get(ctx context.Context) (pkb *stack.PacketBuffer) {
+	pkb = l.getByOnce(invalidAddr)
+	if !pkb.IsNil() {
+		return pkb
+	}
+
+	for {
+		select {
+		case <-l.writeCh:
+			pkb = l.getByOnce(invalidAddr)
+			if !pkb.IsNil() {
+				return pkb
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (l *heap) GetBy(ctx context.Context, dst netip.AddrPort) (pkb *stack.PacketBuffer) {
+	pkb = l.getByOnce(dst)
+	if !pkb.IsNil() {
+		return pkb
+	}
+
+	for {
+		select {
+		case <-l.writeCh:
+			pkb = l.getByOnce(dst)
+			if !pkb.IsNil() {
+				return pkb
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (l *heap) getByOnce(dst netip.AddrPort) (pkb *stack.PacketBuffer) {
+	i := -1
+	l.listMu.RLock()
+	if l.n > 0 {
+		for i = l.i; i < len(l.list); i++ {
+			if match(l.list[i], dst) {
+				break
+			}
+		}
+		for i = 0; i < l.i; i++ {
+			if match(l.list[i], dst) {
+				break
+			}
+		}
+	}
+	l.listMu.RUnlock()
+	if i < 0 {
+		return nil
+	}
+
+	l.listMu.Lock()
+	defer l.listMu.Unlock()
+
+	pkb = l.list[i]
+	if !match(pkb, dst) {
+		return nil
+	}
+
+	l.list[i] = nil
+	l.n--
+	if i == l.i {
+		l.i = (l.i + 1) % (len(l.list))
+	}
+	return pkb
+}
+
+func (l *heap) Size() int { return l.n }
+
+
+func Test_Heap(t *testing.T) {
+	h := newHeap(16)
+	var ch = make(chan uintptr, 512)
+
+	go func() {
+		for i := 0; i < 512; i++ {
+			var pkb = stack.NewPacketBuffer(stack.PacketBufferOptions{
+				Payload: buffer.MakeWithData(make([]byte, 1)),
+			})
+
+			if h.Put(pkb) {
+				ch <- pkb.ID()
+			}
+		}
+		close(ch)
+	}()
+
+	ctx := context.Background()
+
+	for e := range ch {
+		pkb := h.Get(ctx)
+		require.Equal(t, e, pkb.ID())
+	}
+}
