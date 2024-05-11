@@ -1,17 +1,10 @@
 package crypto_test
 
 import (
-	"context"
-	"io"
 	"math/rand"
-	"net/netip"
 	"testing"
-	"time"
 
 	"github.com/lysShub/fatcp/crypto"
-	"github.com/lysShub/fatcp/ustack"
-	"github.com/lysShub/fatcp/ustack/gonet"
-	"github.com/lysShub/fatcp/ustack/link"
 	"github.com/lysShub/netkit/packet"
 
 	"github.com/lysShub/rawsock/test"
@@ -66,9 +59,9 @@ func Test_Tcp_Base(t *testing.T) {
 		key = [crypto.Bytes]byte{0: 1}
 	)
 
-	for _, e := range []int{0, 1, 5, 16, 1024, 1480} {
+	for _, size := range []int{0, 1, 5, 16, 1024, 1480} {
 
-		p, pseudoSum1 := buildTCP(t, e, false)
+		p, pseudoSum1 := buildTCP(t, size, false)
 
 		c, err := crypto.NewTCP(key, pseudoSum1)
 		require.NoError(t, err)
@@ -81,7 +74,7 @@ func Test_Tcp_Base(t *testing.T) {
 		test.ValidTCP(t, p.Bytes(), pseudoSum1)
 
 		msg := header.TCP(p.Bytes()).Payload()
-		require.Equal(t, e, len(msg))
+		require.Equal(t, size, len(msg))
 		for i, e := range msg {
 			require.Equal(t, byte(i), e)
 		}
@@ -115,63 +108,6 @@ func Test_Tcp_NAT(t *testing.T) {
 	require.Equal(t, 16, len(msg))
 	for i, e := range msg {
 		require.Equal(t, byte(i), e)
-	}
-}
-
-func Test_Tcp_Conn(t *testing.T) {
-	t.Skip("need change seq")
-
-	var (
-		caddr = netip.AddrPortFrom(test.LocIP(), test.RandPort())
-		saddr = netip.AddrPortFrom(test.LocIP(), test.RandPort())
-		seed  = time.Now().UnixNano()
-		r     = rand.New(rand.NewSource(seed))
-
-		pseudoSum1 = header.PseudoHeaderChecksum(
-			header.TCPProtocolNumber,
-			test.Address(caddr.Addr()),
-			test.Address(saddr.Addr()),
-			0,
-		)
-	)
-	t.Log("seed", seed)
-	c, s := test.NewMockRaw(
-		t, header.TCPProtocolNumber,
-		caddr, saddr,
-		test.ValidAddr, test.ValidChecksum, test.PacketLoss(0.05),
-	)
-
-	go func() {
-		st, err := ustack.NewUstack(link.NewList(16, 1536), saddr.Addr())
-		require.NoError(t, err)
-		UnicomStackAndRaw(t, st, s, pseudoSum1)
-
-		l, err := gonet.ListenTCP(st, saddr, header.IPv4ProtocolNumber)
-		require.NoError(t, err)
-		defer l.Close()
-
-		conn, err := l.Accept(context.Background())
-		require.NoError(t, err)
-		defer conn.Close()
-
-		_, err = io.Copy(conn, conn)
-		require.NoError(t, err)
-	}()
-
-	{ // client
-		st, err := ustack.NewUstack(link.NewList(16, 1536), saddr.Addr())
-		require.NoError(t, err)
-		UnicomStackAndRaw(t, st, c, pseudoSum1)
-
-		conn, err := gonet.DialTCPWithBind(
-			context.Background(), st,
-			caddr, saddr,
-			header.IPv4ProtocolNumber,
-		)
-		require.NoError(t, err)
-		defer conn.Close()
-
-		test.ValidPingPongConn(t, r, conn, 0xff)
 	}
 }
 

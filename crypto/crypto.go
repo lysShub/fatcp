@@ -11,7 +11,6 @@ type Key = [Bytes]byte
 
 type Crypto interface {
 	Overhead() int
-
 	Decrypt(pkt *packet.Packet) error
 	Encrypt(pkt *packet.Packet)
 }

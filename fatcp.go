@@ -2,7 +2,6 @@ package fatcp
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net"
@@ -204,7 +203,7 @@ func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error
 			}
 
 			// todo: temporary
-			var attr = slog.String("ip", hex.EncodeToString(pkt.SetHead(head).Bytes()))
+			var attr = slog.String("ip", fmt.Sprintf("%+v", pkt.SetHead(head).Bytes()))
 			slog.Error(err.Error(), attr)
 
 			return Peer{}, errorx.WrapTemp(err)
