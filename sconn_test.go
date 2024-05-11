@@ -37,6 +37,7 @@ func Test_TCP_Conn(t *testing.T) {
 			Handshake:       sign,
 			MaxRecvBuffSize: 1536,
 			MTU:             1500,
+			RecvErrLimit:    8,
 		}
 	)
 	c, s := test.NewMockRaw(

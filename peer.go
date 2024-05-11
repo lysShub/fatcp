@@ -47,7 +47,7 @@ func encode(pkt *packet.Packet, p Peer) {
 
 func decode(seg *packet.Packet) Peer {
 	b := seg.Bytes()
-	seg.SetHead(seg.Head() + Overhead)
+	seg.SetHead(seg.Head() + peerOverhead)
 	return Peer{
 		Proto:  proto(b[off1:off2]),
 		Remote: netip.AddrFrom4([4]byte(b[off2:off3])),

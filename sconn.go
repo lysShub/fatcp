@@ -68,16 +68,6 @@ const (
 	server role = 2
 )
 
-type state = atomic.Uint32
-
-const (
-	initial    uint32 = 0
-	handshake1 uint32 = 1 // handshake self
-	handshake2 uint32 = 2 // wait peer finish
-	transmit   uint32 = 3
-	closed     uint32 = 4
-)
-
 func newConn(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) (*Conn, error) {
 	if err := config.Init(); err != nil {
 		return nil, err
@@ -178,13 +168,6 @@ func (c *Conn) TCP(ctx context.Context) (net.Conn, error) {
 	return c.tcp, nil
 }
 
-type ErrOverflowMTU int
-
-func (e ErrOverflowMTU) Error() string {
-	return fmt.Sprintf("packet size %d overflow mtu limit", int(e))
-}
-func (ErrOverflowMTU) Temporary() bool { return true }
-
 func (c *Conn) Send(ctx context.Context, pkt *packet.Packet, id Peer) (err error) {
 	if err := c.handshake(ctx); err != nil {
 		return err
@@ -204,7 +187,7 @@ func (c *Conn) recv(ctx context.Context, pkt *packet.Packet) error {
 	if c.handshakeRecvSegs.pop(pkt) {
 		return nil
 	}
-	return c.raw.Read(ctx, pkt.SetData(0xffff))
+	return c.raw.Read(ctx, pkt)
 }
 
 func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error) {
@@ -214,7 +197,7 @@ func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error
 
 	head := pkt.Head()
 	for {
-		err = c.recv(ctx, pkt.SetHead(head))
+		err = c.recv(ctx, pkt.Sets(head, 0xffff))
 		if err != nil {
 			return Peer{}, err
 		}

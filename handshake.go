@@ -18,45 +18,6 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
-type tcpFactory interface {
-	factory(ctx context.Context) (*gonet.TCPConn, error)
-	Close() error
-}
-
-type clientFactory struct {
-	local, remote netip.AddrPort
-	stack         ustack.Ustack
-}
-
-func (c *clientFactory) factory(ctx context.Context) (*gonet.TCPConn, error) {
-	tcp, err := gonet.DialTCPWithBind(
-		ctx, c.stack,
-		c.local, c.remote,
-		header.IPv4ProtocolNumber,
-	)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return tcp, nil
-}
-
-func (c *clientFactory) Close() error { return c.stack.Close() }
-
-type serverFactory struct {
-	l      *gonet.TCPListener
-	remote netip.AddrPort
-}
-
-func (s *serverFactory) factory(ctx context.Context) (*gonet.TCPConn, error) {
-	tcp, err := s.l.AcceptBy(ctx, s.remote)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return tcp, nil
-}
-
-func (s *serverFactory) Close() error { return nil }
-
 /*
 	握手关键需要处理好边界情况；关键函数是gonet.WaitBeforeDataTransmitted。
 	流程：
@@ -70,6 +31,16 @@ func (s *serverFactory) Close() error { return nil }
 
 		c/d 属于边界情况，一般不会有太多数据包处于这种状态。
 */
+
+type state = atomic.Uint32
+
+const (
+	initial    uint32 = 0
+	handshake1 uint32 = 1 // send finish
+	handshake2 uint32 = 2 // wait peer recved all data
+	transmit   uint32 = 3
+	closed     uint32 = 4
+)
 
 func (c *Conn) handshake(ctx context.Context) (err error) {
 	if !c.state.CompareAndSwap(initial, handshake1) {
@@ -171,6 +142,45 @@ func (c *Conn) handshakeInboundService(ctx context.Context) error {
 		}
 	}
 }
+
+type tcpFactory interface {
+	factory(ctx context.Context) (*gonet.TCPConn, error)
+	Close() error
+}
+
+type clientFactory struct {
+	local, remote netip.AddrPort
+	stack         ustack.Ustack
+}
+
+func (c *clientFactory) factory(ctx context.Context) (*gonet.TCPConn, error) {
+	tcp, err := gonet.DialTCPWithBind(
+		ctx, c.stack,
+		c.local, c.remote,
+		header.IPv4ProtocolNumber,
+	)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return tcp, nil
+}
+
+func (c *clientFactory) Close() error { return c.stack.Close() }
+
+type serverFactory struct {
+	l      *gonet.TCPListener
+	remote netip.AddrPort
+}
+
+func (s *serverFactory) factory(ctx context.Context) (*gonet.TCPConn, error) {
+	tcp, err := s.l.AcceptBy(ctx, s.remote)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return tcp, nil
+}
+
+func (s *serverFactory) Close() error { return nil }
 
 // heap simple heap buff, only support concurrent pop,
 // and not support cross pop/put operate.

@@ -3,6 +3,7 @@ package fatcp
 import (
 	"context"
 	"encoding/gob"
+	"fmt"
 	"net"
 	"time"
 
@@ -47,6 +48,13 @@ type Handshake interface {
 	Client(ctx context.Context, tcp net.Conn) (crypto.Key, error)
 	Server(ctx context.Context, tcp net.Conn) (crypto.Key, error)
 }
+
+type ErrOverflowMTU int
+
+func (e ErrOverflowMTU) Error() string {
+	return fmt.Sprintf("packet size %d overflow mtu limit", int(e))
+}
+func (ErrOverflowMTU) Temporary() bool { return true }
 
 // Sign sign can't guarantee transport security
 type Sign struct {
