@@ -29,14 +29,6 @@ import (
 
 const Overhead = faketcp.Overhead + peerOverhead
 
-type Sconn interface {
-	net.Conn // control tcp conn
-
-	// Recv/Send segment packet
-	Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error)
-	Send(ctx context.Context, pkt *packet.Packet, id Peer) (err error)
-}
-
 // security datagram conn
 type Conn struct {
 	config     *Config
@@ -233,7 +225,7 @@ func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error
 type ErrRecvTooManyErrors struct{ error }
 
 func (e *ErrRecvTooManyErrors) Error() string {
-	return fmt.Sprintf("sconn recv too many error: %s", e.error.Error())
+	return fmt.Sprintf("fatcp recv too many error: %s", e.error.Error())
 }
 
 func (c *Conn) inboundControlPacket(pkt *packet.Packet) {

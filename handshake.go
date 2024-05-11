@@ -67,7 +67,7 @@ func (c *Conn) handshake(ctx context.Context) (err error) {
 			return err
 		}
 	} else {
-		return errors.Errorf("sconn invalid role %d", c.role)
+		return errors.Errorf("fatcp invalid role %d", c.role)
 	}
 
 	pseudoSum1 := header.PseudoHeaderChecksum(
