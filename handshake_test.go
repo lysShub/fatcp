@@ -78,11 +78,10 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 					}(),
 					Parser: func(context.Context, []byte) (crypto.Key, error) { return crypto.Key{1: 1}, nil },
 				},
-
+				MTU:             1500,
 				MaxRecvBuffSize: 1536,
 			}
 		)
-		require.NoError(t, cfg.Init())
 
 		c, s := test.NewMockRaw(
 			t, header.TCPProtocolNumber,
@@ -101,7 +100,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 
 			conn, err := l.AcceptCtx(ctx)
 			require.NoError(t, err)
-			_, err = conn.TCP(ctx)
+			_, err = conn.BuiltinTCP(ctx)
 			require.True(t, errors.Is(err, context.DeadlineExceeded), err)
 			return nil
 		})
@@ -109,8 +108,9 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 		// client
 		eg.Go(func() error {
 			conn, err := NewConn(c, cfg)
-			_, err = conn.TCP(ctx)
-			require.True(t, errors.Is(err, context.DeadlineExceeded), err)
+			require.NoError(t, err)
+			_, err = conn.BuiltinTCP(ctx)
+			require.True(t, errors.Is(err, os.ErrDeadlineExceeded), err)
 			return nil
 		})
 
@@ -130,7 +130,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 					}(),
 					Parser: func(context.Context, []byte) (crypto.Key, error) { return crypto.Key{1: 1}, nil },
 				},
-
+				MTU:             1500,
 				MaxRecvBuffSize: 1536,
 			}
 		)
@@ -150,7 +150,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 
 			conn, err := l.AcceptCtx(ctx)
 			require.NoError(t, err)
-			_, err = conn.TCP(ctx)
+			_, err = conn.BuiltinTCP(ctx)
 			require.True(t, errors.Is(err, context.Canceled), err)
 			return nil
 		})
@@ -158,7 +158,8 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 		// client
 		eg.Go(func() error {
 			conn, err := NewConn(c, cfg)
-			_, err = conn.TCP(ctx)
+			require.NoError(t, err)
+			_, err = conn.BuiltinTCP(ctx)
 			require.True(t, errors.Is(err, os.ErrDeadlineExceeded), err)
 			return nil
 		})

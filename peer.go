@@ -42,18 +42,18 @@ func encode(pkt *packet.Packet, p Peer) {
 
 func decode(seg *packet.Packet) Peer {
 	b := seg.Bytes()
-	seg.SetHead(seg.Head() + peerOverhead)
+	seg.SetHead(seg.Head() + peerSize)
 	return Peer{
 		Proto:  tcpip.TransportProtocolNumber(b[off1]),
 		Remote: netip.AddrFrom4([4]byte(b[off2:off3])),
 	}
 }
 
-var ControlPeer Peer = Peer{Remote: netip.IPv4Unspecified(), Proto: tcp.ProtocolNumber}
+var BuiltinPeer Peer = Peer{Remote: netip.IPv4Unspecified(), Proto: tcp.ProtocolNumber}
 
 const (
-	off1         = 0
-	off2         = 1
-	off3         = 5
-	peerOverhead = off3
+	off1     = 0
+	off2     = 1
+	off3     = 5
+	peerSize = off3
 )

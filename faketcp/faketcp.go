@@ -16,7 +16,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
-const Overhead = 20 + crypto.Bytes
+const Overhead = 20
 
 // record tcp seq/ack, not care handshake/clode, etc.
 // todo: more reasonable wnd
@@ -102,7 +102,6 @@ func (f *FakeTCP) AttachSend(seg *packet.Packet) {
 		f.crypto.Encrypt(seg)
 	} else if f.pseudoSum1 != nil {
 		f.sndNxt.Add(uint32(payload))
-
 		tcp := header.TCP(seg.Bytes())
 		psum := checksum.Combine(*f.pseudoSum1, uint16(len(tcp)))
 
@@ -122,25 +121,22 @@ func (f *FakeTCP) DetachRecv(tcp *packet.Packet) error {
 		if err := f.crypto.Decrypt(tcp); err != nil {
 			return errorx.WrapTemp(err)
 		}
-	} else if f.pseudoSum1 != nil {
-		if debug.Debug() {
-			hdr := header.TCP(tcp.Bytes())
-			require.False(test.T(), Is(hdr))
-			test.ValidTCP(test.T(), hdr, *f.pseudoSum1)
-		}
+	}
+	if debug.Debug() {
+		hdr := header.TCP(tcp.Bytes())
+		require.True(test.T(), Is(hdr))
+		test.ValidTCP(test.T(), hdr, *f.pseudoSum1)
 	}
 
 	hdr := header.TCP(tcp.Bytes())
 	f.rcvNxt.Store(max(f.rcvNxt.Load(), hdr.SequenceNumber()+uint32(len(hdr.Payload()))))
-	// f.ack.Store(max(f.ack.Load(), hdr.SequenceNumber()))
 
 	// remove tcp header
 	tcp.SetHead(tcp.Head() + int(hdr.DataOffset()))
 	return nil
 }
 
-const ()
-
+// is faketcp segment: without tcp options
 func Is(tcp header.TCP) bool {
 	return tcp.DataOffset() == header.TCPMinimumSize
 }
@@ -160,7 +156,10 @@ func ToNot(tcp *packet.Packet) *packet.Packet {
 }
 
 // useless tcp option
-var opts = []byte{1, 1, 1, 0}
+var opts = []byte{
+	// NOOP, NOOP, NOOP, EOF
+	1, 1, 1, 0,
+}
 var deltaSum = checksum.Checksum(
 	opts,
 	1<<(4+8)+ // data-offset

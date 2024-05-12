@@ -499,11 +499,11 @@ func (c *TCPConn) RemoteAddr() net.Addr {
 	return fullToTCPAddr(a)
 }
 
-// WaitBeforeDataTransmitted wait before writen data is recved by peer. firstly wait
+// WaitSentDataRecvByPeer wait before sent data is recved by peer. firstly wait
 // send-buff drain, secondly wait SndUna==SndNxt.
 //
-// require doesn't Write data actively when call WaitBeforeDataTransmitted.
-func (c *TCPConn) WaitBeforeDataTransmitted(ctx context.Context) (sndnxt, rcvnxt uint32, err error) {
+// require doesn't Write data manually when call WaitSentDataRecvByPeer.
+func (c *TCPConn) WaitSentDataRecvByPeer(ctx context.Context) (sndnxt, rcvnxt uint32, err error) {
 	ep, ok := c.ep.(interface {
 		LockUser()
 		UnlockUser()

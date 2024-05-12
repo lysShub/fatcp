@@ -19,10 +19,10 @@ import (
 )
 
 /*
-	握手关键需要处理好边界情况；关键函数是gonet.WaitBeforeDataTransmitted。
+	握手关键需要处理好边界情况；关键函数是gonet.WaitSentDataRecvByPeer。
 	流程：
 		handshake1完成后，（handshak2阶段）等待对方握手完成，期间将不会主动发送数据包。判定对方握手完成的依据是我方
-		在握手期间发送的数据包全部被对方收到--WaitBeforeDataTransmitted。
+		在握手期间发送的数据包全部被对方收到--WaitSentDataRecvByPeer。
 		a. 对于outboundService，在handshak2完成后，发送的是control-segment包, 而不是原始的tcp数据包。
 		b. 对于handshakeInboundService，在handshak2完成后，才能退出。
 		c. 如果handshakeInboundService运行时收到segment包，若此时hanshake1已经完成，应该尝试decode，session-id是CtrSessID
@@ -81,9 +81,17 @@ func (c *Conn) handshake(ctx context.Context) (err error) {
 		tcpip.AddrFromSlice(c.raw.RemoteAddr().Addr().AsSlice()),
 		0,
 	)
-	if cpt, err := crypto.NewTCP(key, pseudoSum1); err != nil {
-		return err
+	if key == (crypto.Key{}) {
+		c.fake = faketcp.New(
+			c.raw.LocalAddr().Port(),
+			c.raw.RemoteAddr().Port(),
+			faketcp.PseudoSum1(pseudoSum1),
+		)
 	} else {
+		cpt, err := crypto.NewTCP(key, pseudoSum1)
+		if err != nil {
+			return err
+		}
 		c.fake = faketcp.New(
 			c.raw.LocalAddr().Port(),
 			c.raw.RemoteAddr().Port(),
@@ -93,7 +101,7 @@ func (c *Conn) handshake(ctx context.Context) (err error) {
 	c.state.CompareAndSwap(handshake1, handshake2)
 
 	// wait before writen data be recved by peer.
-	if sndnxt, rcvnxt, err := tcp.WaitBeforeDataTransmitted(ctx); err != nil {
+	if sndnxt, rcvnxt, err := tcp.WaitSentDataRecvByPeer(ctx); err != nil {
 		return err
 	} else {
 		c.fake.InitNxt(sndnxt, rcvnxt)
@@ -107,9 +115,7 @@ func (c *Conn) handshake(ctx context.Context) (err error) {
 }
 
 func (c *Conn) handshakeInboundService(ctx context.Context) error {
-	var (
-		pkt = packet.Make(c.config.MaxRecvBuffSize)
-	)
+	var pkt = packet.Make(c.config.MaxRecvBuffSize)
 
 	for {
 		err := c.raw.Read(ctx, pkt.SetHead(0))
@@ -132,7 +138,7 @@ func (c *Conn) handshakeInboundService(ctx context.Context) error {
 
 			if c.state.Load() >= handshake2 &&
 				c.fake.DetachRecv(seg) == nil &&
-				decode(seg) == ControlPeer {
+				decode(seg) == BuiltinPeer {
 
 				c.inboundControlPacket(seg)
 			} else {

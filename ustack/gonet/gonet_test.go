@@ -18,7 +18,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
-func Test_WaitBeforeDataTransmitted(t *testing.T) {
+func Test_WaitSentDataRecvByPeer(t *testing.T) {
 	var (
 		wg, ctx = errgroup.WithContext(context.Background())
 		caddr   = netip.AddrPortFrom(test.RandIP(), 19986)
@@ -52,7 +52,7 @@ func Test_WaitBeforeDataTransmitted(t *testing.T) {
 
 		test.ValidPingPongConn(t, rand.New(rand.NewSource(0)), conn, 0xffff)
 
-		_, _, err = conn.WaitBeforeDataTransmitted(ctx)
+		_, _, err = conn.WaitSentDataRecvByPeer(ctx)
 		require.NoError(t, err)
 		return nil
 	})

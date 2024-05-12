@@ -26,7 +26,7 @@ import (
 	"github.com/lysShub/rawsock/test"
 )
 
-const Overhead = faketcp.Overhead + peerOverhead
+const Overhead = faketcp.Overhead + peerSize
 
 // security datagram conn
 type Conn struct {
@@ -43,7 +43,7 @@ type Conn struct {
 
 	ep      *ustack.LinkEndpoint
 	factory tcpFactory
-	tcp     net.Conn // control tcp conn
+	tcp     net.Conn // builtin tcp conn
 
 	fake *faketcp.FakeTCP //
 
@@ -93,7 +93,7 @@ func (c *Conn) close(cause error) error {
 			if gotcp, ok := c.tcp.(*gonet.TCPConn); ok {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 				defer cancel()
-				gotcp.WaitBeforeDataTransmitted(ctx)
+				gotcp.WaitSentDataRecvByPeer(ctx)
 			}
 		}
 		if c.ep != nil {
@@ -134,7 +134,7 @@ func (c *Conn) outboundService() error {
 		}
 
 		if c.state.Load() == transmit {
-			err = c.Send(c.srvCtx, pkt, ControlPeer)
+			err = c.Send(c.srvCtx, pkt, BuiltinPeer)
 			if err != nil {
 				return c.close(err)
 			}
@@ -147,8 +147,10 @@ func (c *Conn) outboundService() error {
 	}
 }
 
-// TCP get builtin tcp conn, require call c.Recv async, otherwise the tcp no work.
-func (c *Conn) TCP(ctx context.Context) (net.Conn, error) {
+func (c *Conn) MTU() int { return c.ep.MTU() + Overhead }
+
+// BuiltinTCP get builtin tcp conn, require call c.Recv asynchronous, at the same time.
+func (c *Conn) BuiltinTCP(ctx context.Context) (net.Conn, error) {
 	if err := c.handshake(ctx); err != nil {
 		return nil, err
 	}
@@ -209,7 +211,7 @@ func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error
 		if debug.Debug() {
 			require.True(test.T(), id.Valid())
 		}
-		if id == ControlPeer {
+		if id == BuiltinPeer {
 			c.inboundControlPacket(pkt)
 			continue
 		}

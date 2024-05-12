@@ -87,6 +87,5 @@ func (g *TCP) Decrypt(tcp *packet.Packet) error {
 }
 
 func nonce(tcp []byte) []byte {
-	return make([]byte, nonces)
 	return tcp[noncesOff : noncesOff+nonces]
 }

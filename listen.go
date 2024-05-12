@@ -40,7 +40,7 @@ func Listen(addr string, config *Config) (*Listener, error) {
 }
 
 func NewListener(l rawsock.Listener, config *Config) (*Listener, error) {
-	if err := config.Init(); err != nil {
+	if err := config.Init(l.Addr().Addr()); err != nil {
 		return nil, err
 	}
 	var li = &Listener{config: config, raw: l}

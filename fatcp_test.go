@@ -29,12 +29,13 @@ var sign = &Sign{
 	},
 }
 
-func Test_TCP_Conn(t *testing.T) {
+func Test_BuiltinTCP(t *testing.T) {
 	var (
 		caddr = netip.AddrPortFrom(test.LocIP(), 19986) // test.RandPort()
 		saddr = netip.AddrPortFrom(test.LocIP(), 8080)  // test.RandPort()
 		cfg   = &Config{
 			Handshake:       sign,
+			MTU:             1500,
 			MaxRecvBuffSize: 1536,
 			RecvErrLimit:    8,
 		}
@@ -63,7 +64,7 @@ func Test_TCP_Conn(t *testing.T) {
 			return nil
 		})
 
-		tcp, err := conn.TCP(ctx)
+		tcp, err := conn.BuiltinTCP(ctx)
 		require.NoError(t, err)
 		_, err = io.Copy(tcp, tcp)
 		require.Contains(t, []error{io.EOF, nil}, err)
@@ -83,101 +84,11 @@ func Test_TCP_Conn(t *testing.T) {
 			return nil
 		})
 
-		tcp, err := conn.TCP(ctx)
+		tcp, err := conn.BuiltinTCP(ctx)
 		require.NoError(t, err)
 		rander := rand.New(rand.NewSource(0))
 		test.ValidPingPongConn(t, rander, tcp, 0xffff)
 
-		return nil
-	})
-
-	eg.Wait()
-}
-
-func Test_Conn(t *testing.T) {
-	t.Skip("todo：use ValidPingPongUDPConn")
-	var (
-		caddr = netip.AddrPortFrom(test.LocIP(), test.RandPort())
-		saddr = netip.AddrPortFrom(test.LocIP(), test.RandPort())
-		sid   = Peer{}
-		mtu   = 1500
-		cfg   = &Config{
-			Handshake: sign,
-		}
-	)
-
-	c, s := test.NewMockRaw(
-		t, header.TCPProtocolNumber,
-		caddr, saddr,
-		test.ValidAddr, test.ValidChecksum, //test.PacketLoss(0.1),
-	)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	eg, ctx := errgroup.WithContext(ctx)
-
-	// echo server
-	eg.Go(func() error {
-		l, err := NewListener(test.NewMockListener(t, s), cfg)
-		require.NoError(t, err)
-		defer l.Close()
-
-		conn, err := l.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		eg.Go(func() error {
-			var pkt = packet.Make(64, mtu)
-			for {
-				id, err := conn.Recv(ctx, pkt.SetHead(64))
-				require.NoError(t, err)
-				require.Equal(t, sid, id)
-				err = conn.Send(ctx, pkt, sid)
-				require.NoError(t, err)
-			}
-		})
-
-		tcp, err := conn.TCP(ctx)
-		require.NoError(t, err)
-		io.Copy(tcp, tcp)
-		return nil
-	})
-
-	// client
-	eg.Go(func() error {
-		wc, err := test.WrapPcap(c, "./test.pcap")
-		require.NoError(t, err)
-		defer wc.Close()
-
-		conn, err := NewConn(wc, cfg)
-		require.NoError(t, err)
-		defer conn.Close()
-
-		rander := rand.New(rand.NewSource(0))
-		eg.Go(func() error {
-			var pkt = packet.Make(64, mtu)
-			for {
-				rander.Read(pkt.SetData(rand.Int() % mtu).Bytes())
-				err := conn.Send(ctx, pkt, sid)
-				require.NoError(t, err)
-
-				time.Sleep(time.Millisecond * 10)
-			}
-		})
-		eg.Go(func() error {
-			var p = packet.Make(64, mtu)
-			for {
-				id, err := conn.Recv(ctx, p.SetHead(64))
-				require.NoError(t, err)
-				require.Equal(t, sid, id)
-			}
-		})
-
-		tcp, err := conn.TCP(ctx)
-		require.NoError(t, err)
-		test.ValidPingPongConn(t, rander, tcp, 0xff)
-
-		cancel()
 		return nil
 	})
 

@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"net"
+	"net/netip"
 	"time"
 
 	"github.com/pkg/errors"
@@ -15,7 +16,9 @@ import (
 type Config struct {
 	Handshake Handshake
 
-	// fatun read from rawsock.RawConn with MaxRecvBuffSize bytes capacity,
+	MTU int
+
+	// fatcp read from rawsock.RawConn with MaxRecvBuffSize bytes capacity,
 	// RawConn will merge MF ip packet automaticly, so mss possible greater than mtu sometimes.
 	// generally set it to mtu is sufficient.
 	MaxRecvBuffSize int
@@ -23,9 +26,16 @@ type Config struct {
 	RecvErrLimit int
 }
 
-func (c *Config) Init() error {
+func (c *Config) Init(laddr netip.Addr) (err error) {
 	if c == nil {
 		panic("nil config")
+	}
+
+	if c.MTU == 0 {
+		c.MTU, err = mtuByAddr(laddr)
+		if err != nil {
+			return err
+		}
 	}
 
 	if c.MaxRecvBuffSize <= 0 {
@@ -49,6 +59,11 @@ func (e ErrOverflowMTU) Error() string {
 	return fmt.Sprintf("packet size %d overflow mtu limit", int(e))
 }
 func (ErrOverflowMTU) Temporary() bool { return true }
+
+type NotCrypto struct{}
+
+func (h *NotCrypto) Client(context.Context, net.Conn) (_ crypto.Key, _ error) { return }
+func (h *NotCrypto) Server(context.Context, net.Conn) (_ crypto.Key, _ error) { return }
 
 // Sign sign can't guarantee transport security
 type Sign struct {
@@ -98,4 +113,31 @@ func (t *Sign) Server(ctx context.Context, conn net.Conn) (crypto.Key, error) {
 	}
 
 	return t.Parser(ctx, sign)
+}
+
+// todo: optimzie
+func mtuByAddr(laddr netip.Addr) (int, error) {
+	ifs, err := net.Interfaces()
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+	for _, i := range ifs {
+		if i.Flags&net.FlagRunning == 0 {
+			continue
+		}
+
+		addrs, err := i.Addrs()
+		if err != nil {
+			return 0, errors.WithStack(err)
+		}
+		for _, addr := range addrs {
+			if e, ok := addr.(*net.IPNet); ok && e.IP.To4() != nil {
+				if netip.AddrFrom4([4]byte(e.IP.To4())) == laddr {
+					return i.MTU, nil
+				}
+			}
+		}
+	}
+
+	return 0, errors.Errorf("not found adapter %s mtu", laddr.String())
 }
