@@ -78,8 +78,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 					}(),
 					Parser: func(context.Context, []byte) (crypto.Key, error) { return crypto.Key{1: 1}, nil },
 				},
-				MTU:             1500,
-				MaxRecvBuffSize: 1536,
+				MTU: 1500,
 			}
 		)
 
@@ -130,8 +129,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 					}(),
 					Parser: func(context.Context, []byte) (crypto.Key, error) { return crypto.Key{1: 1}, nil },
 				},
-				MTU:             1500,
-				MaxRecvBuffSize: 1536,
+				MTU: 1500,
 			}
 		)
 		c, s := test.NewMockRaw(

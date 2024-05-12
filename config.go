@@ -18,11 +18,6 @@ type Config struct {
 
 	MTU int
 
-	// fatcp read from rawsock.RawConn with MaxRecvBuffSize bytes capacity,
-	// RawConn will merge MF ip packet automaticly, so mss possible greater than mtu sometimes.
-	// generally set it to mtu is sufficient.
-	MaxRecvBuffSize int
-
 	RecvErrLimit int
 }
 
@@ -36,15 +31,13 @@ func (c *Config) Init(laddr netip.Addr) (err error) {
 	}
 
 	if c.MTU == 0 {
-		c.MTU, err = mtuByAddr(laddr)
-		if err != nil {
+		if i, err := ifaceByAddr(laddr); err != nil {
 			return err
+		} else {
+			c.MTU = i.Index
 		}
 	}
 
-	if c.MaxRecvBuffSize <= 0 {
-		c.MaxRecvBuffSize = 1536
-	}
 	if c.RecvErrLimit == 0 {
 		c.RecvErrLimit = 8
 	}
@@ -120,10 +113,10 @@ func (t *Sign) Server(ctx context.Context, conn net.Conn) (crypto.Key, error) {
 }
 
 // todo: optimzie
-func mtuByAddr(laddr netip.Addr) (int, error) {
+func ifaceByAddr(laddr netip.Addr) (*net.Interface, error) {
 	ifs, err := net.Interfaces()
 	if err != nil {
-		return 0, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	for _, i := range ifs {
 		if i.Flags&net.FlagRunning == 0 {
@@ -132,16 +125,16 @@ func mtuByAddr(laddr netip.Addr) (int, error) {
 
 		addrs, err := i.Addrs()
 		if err != nil {
-			return 0, errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		}
 		for _, addr := range addrs {
 			if e, ok := addr.(*net.IPNet); ok && e.IP.To4() != nil {
 				if netip.AddrFrom4([4]byte(e.IP.To4())) == laddr {
-					return i.MTU, nil
+					return &i, nil
 				}
 			}
 		}
 	}
 
-	return 0, errors.Errorf("not found adapter %s mtu", laddr.String())
+	return nil, errors.Errorf("not found adapter %s mtu", laddr.String())
 }

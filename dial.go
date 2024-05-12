@@ -32,12 +32,11 @@ func DialCtx(ctx context.Context, server string, config *Config) (*Conn, error) 
 		return nil, err
 	}
 
-	if conn.handshake(ctx); err != nil {
+	if err = conn.handshake(ctx); err != nil {
 		raw.Close()
 		conn.Close()
 		return nil, err
 	}
-
 	return conn, nil
 }
 

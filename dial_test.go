@@ -7,6 +7,6 @@ import (
 
 func TestXxxx(t *testing.T) {
 
-	mtuByAddr(netip.Addr{})
+	ifaceByAddr(netip.Addr{})
 
 }

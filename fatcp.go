@@ -121,7 +121,7 @@ func (c *Conn) close(cause error) error {
 }
 
 func (c *Conn) outboundService() error {
-	var pkt = packet.Make(c.config.MaxRecvBuffSize)
+	var pkt = packet.Make(c.config.MTU)
 
 	for {
 		err := c.ep.Outbound(c.srvCtx, pkt.Sets(Overhead, 0xffff))
@@ -186,6 +186,7 @@ func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error
 
 	head := pkt.Head()
 	for {
+		// todo: 如果server之间close, 可以导致接受到原始的RST, 可能导致decode等出现panic
 		err = c.recv(ctx, pkt.Sets(head, 0xffff))
 		if err != nil {
 			return Peer{}, err

@@ -115,7 +115,7 @@ func (c *Conn) handshake(ctx context.Context) (err error) {
 }
 
 func (c *Conn) handshakeInboundService(ctx context.Context) error {
-	var pkt = packet.Make(c.config.MaxRecvBuffSize)
+	var pkt = packet.Make(c.config.MTU)
 
 	for {
 		err := c.raw.Read(ctx, pkt.SetHead(0))

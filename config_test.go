@@ -22,10 +22,9 @@ func Test_NotCrypto(t *testing.T) {
 		caddr = netip.AddrPortFrom(test.LocIP(), 19986) // test.RandPort()
 		saddr = netip.AddrPortFrom(test.LocIP(), 8080)  // test.RandPort()
 		cfg   = &Config{
-			Handshake:       &NotCrypto{},
-			MTU:             1500,
-			MaxRecvBuffSize: 1536,
-			RecvErrLimit:    8,
+			Handshake:    &NotCrypto{},
+			MTU:          1500,
+			RecvErrLimit: 8,
 		}
 	)
 	c, s := test.NewMockRaw(
@@ -46,7 +45,7 @@ func Test_NotCrypto(t *testing.T) {
 		defer conn.Close()
 
 		eg.Go(func() error {
-			var p = packet.From(make([]byte, cfg.MaxRecvBuffSize))
+			var p = packet.From(make([]byte, cfg.MTU))
 			_, err := conn.Recv(ctx, p)
 			require.True(t, errors.Is(err, net.ErrClosed), err)
 			return nil
@@ -66,7 +65,7 @@ func Test_NotCrypto(t *testing.T) {
 		defer conn.Close()
 
 		eg.Go(func() error {
-			var p = packet.Make(0, cfg.MaxRecvBuffSize)
+			var p = packet.Make(0, cfg.MTU)
 			_, err := conn.Recv(ctx, p)
 			require.True(t, errors.Is(err, net.ErrClosed), err)
 			return nil
