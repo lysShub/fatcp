@@ -31,6 +31,10 @@ func (c *Config) Init(laddr netip.Addr) (err error) {
 		panic("nil config")
 	}
 
+	if c.Handshake == nil {
+		c.Handshake = &NotCrypto{}
+	}
+
 	if c.MTU == 0 {
 		c.MTU, err = mtuByAddr(laddr)
 		if err != nil {
