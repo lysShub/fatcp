@@ -56,6 +56,11 @@ func (c *Conn) handshake(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			tcp.Close()
+		}
+	}()
 
 	var key crypto.Key
 	if c.role == server {

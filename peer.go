@@ -3,18 +3,17 @@ package fatcp
 import (
 	"fmt"
 	"net/netip"
+	"syscall"
 
 	"github.com/lysShub/netkit/debug"
 	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock/test"
 	"github.com/stretchr/testify/require"
-	"gvisor.dev/gvisor/pkg/tcpip"
-	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
 type Peer struct {
 	Remote netip.Addr
-	Proto  tcpip.TransportProtocolNumber
+	Proto  uint8
 }
 
 func (id Peer) String() string {
@@ -23,7 +22,7 @@ func (id Peer) String() string {
 
 func (id Peer) Valid() bool {
 	return id.Remote.IsValid() &&
-		(id.Proto == header.TCPProtocolNumber || id.Proto == header.UDPProtocolNumber)
+		(id.Proto == syscall.IPPROTO_TCP || id.Proto == syscall.IPPROTO_UDP)
 }
 
 const (
@@ -36,9 +35,9 @@ func encode(pkt *packet.Packet, p Peer) {
 		require.True(test.T(), p.Remote.Is4())
 	}
 	pkt.Attach(p.Remote.AsSlice())
-	if p.Proto == header.TCPProtocolNumber {
+	if p.Proto == syscall.IPPROTO_TCP {
 		pkt.Attach([]byte{tcp})
-	} else if p.Proto == header.UDPProtocolNumber {
+	} else if p.Proto == syscall.IPPROTO_UDP {
 		pkt.Attach([]byte{udp})
 	} else {
 		panic("")
@@ -54,18 +53,18 @@ func decode(seg *packet.Packet) Peer {
 	}
 }
 
-func proto(b []byte) tcpip.TransportProtocolNumber {
+func proto(b []byte) uint8 {
 	switch b[0] {
 	case tcp:
-		return header.TCPProtocolNumber
+		return syscall.IPPROTO_TCP
 	case udp:
-		return header.UDPProtocolNumber
+		return syscall.IPPROTO_UDP
 	default:
 		panic("")
 	}
 }
 
-var ControlPeer Peer = Peer{Remote: netip.IPv4Unspecified(), Proto: header.TCPProtocolNumber}
+var ControlPeer Peer = Peer{Remote: netip.IPv4Unspecified(), Proto: syscall.IPPROTO_TCP}
 
 const (
 	off1         = 0

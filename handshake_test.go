@@ -109,7 +109,8 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 
 		// client
 		eg.Go(func() error {
-			_, err := DialCtx(ctx, c, cfg)
+			conn, err := NewConn(c, cfg)
+			_, err = conn.TCP(ctx)
 			require.True(t, errors.Is(err, context.DeadlineExceeded), err)
 			return nil
 		})
@@ -158,7 +159,8 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 
 		// client
 		eg.Go(func() error {
-			_, err := DialCtx(ctx, c, cfg)
+			conn, err := NewConn(c, cfg)
+			_, err = conn.TCP(ctx)
 			require.True(t, errors.Is(err, os.ErrDeadlineExceeded), err)
 			return nil
 		})

@@ -73,7 +73,7 @@ func Test_TCP_Conn(t *testing.T) {
 
 	// client
 	eg.Go(func() error {
-		conn, err := Dial(c, cfg)
+		conn, err := NewConn(c, cfg)
 		require.NoError(t, err)
 		defer conn.Close()
 
@@ -150,7 +150,7 @@ func Test_Conn(t *testing.T) {
 		require.NoError(t, err)
 		defer wc.Close()
 
-		conn, err := Dial(wc, cfg)
+		conn, err := NewConn(wc, cfg)
 		require.NoError(t, err)
 		defer conn.Close()
 

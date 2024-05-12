@@ -59,10 +59,8 @@ func (ErrOverflowMTU) Temporary() bool { return true }
 // Sign sign can't guarantee transport security
 type Sign struct {
 	Sign   []byte
-	Parser Parser
+	Parser func(context.Context, []byte) (crypto.Key, error)
 }
-
-type Parser func(context.Context, []byte) (crypto.Key, error)
 
 func (t *Sign) Client(ctx context.Context, conn net.Conn) (crypto.Key, error) {
 	stop := context.AfterFunc(ctx, func() {

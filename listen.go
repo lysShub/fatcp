@@ -12,6 +12,7 @@ import (
 	"github.com/lysShub/rawsock"
 	"github.com/pkg/errors"
 
+	rawtcp "github.com/lysShub/rawsock/tcp"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
@@ -23,6 +24,19 @@ type Listener struct {
 	l     *gonet.TCPListener
 
 	closeErr atomic.Pointer[error]
+}
+
+func Listen(addr string, config *Config) (*Listener, error) {
+	laddr, err := resolve(addr, true)
+	if err != nil {
+		return nil, err
+	}
+
+	rawl, err := rawtcp.Listen(laddr)
+	if err != nil {
+		return nil, err
+	}
+	return NewListener(rawl, config)
 }
 
 func NewListener(l rawsock.Listener, config *Config) (*Listener, error) {

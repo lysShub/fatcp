@@ -60,10 +60,6 @@ const (
 )
 
 func newConn(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) (*Conn, error) {
-	if err := config.Init(); err != nil {
-		return nil, err
-	}
-
 	var c = &Conn{
 		config: config,
 		raw:    raw,
