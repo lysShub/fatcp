@@ -45,9 +45,12 @@ func NewListener(l rawsock.Listener, config *Config) (*Listener, error) {
 	}
 	var li = &Listener{config: config, raw: l}
 
-	var err error
+	mtu, err := mtuByAddr(l.Addr().Addr())
+	if err != nil {
+		return nil, err
+	}
 	if li.stack, err = ustack.NewUstack(
-		link.NewList(64, config.MTU-Overhead), l.Addr().Addr(),
+		link.NewList(64, mtu-Overhead), l.Addr().Addr(),
 	); err != nil {
 		return nil, li.close(err)
 	}

@@ -20,9 +20,6 @@ type Config struct {
 	// generally set it to mtu is sufficient.
 	MaxRecvBuffSize int
 
-	// only use by gvisor LinkEndpoint
-	MTU int
-
 	RecvErrLimit int
 }
 
@@ -33,9 +30,6 @@ func (c *Config) Init() error {
 
 	if c.MaxRecvBuffSize <= 0 {
 		c.MaxRecvBuffSize = 1536
-	}
-	if c.MTU <= 0 {
-		c.MTU = 1360
 	}
 	if c.RecvErrLimit == 0 {
 		c.RecvErrLimit = 8

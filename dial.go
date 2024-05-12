@@ -46,8 +46,12 @@ func NewConn(raw rawsock.RawConn, config *Config) (*Conn, error) {
 		return nil, err
 	}
 
+	mtu, err := mtuByAddr(raw.LocalAddr().Addr())
+	if err != nil {
+		return nil, err
+	}
 	stack, err := ustack.NewUstack(
-		link.NewList(8, config.MTU-Overhead),
+		link.NewList(8, mtu-Overhead),
 		raw.LocalAddr().Addr(),
 	)
 	if err != nil {
@@ -92,4 +96,31 @@ func resolve(addr string, local bool) (netip.AddrPort, error) {
 		}
 		return netip.MustParseAddrPort(taddr.String()), nil
 	}
+}
+
+// todo: optimzie
+func mtuByAddr(laddr netip.Addr) (int, error) {
+	ifs, err := net.Interfaces()
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+	for _, i := range ifs {
+		if i.Flags&net.FlagRunning == 0 {
+			continue
+		}
+
+		addrs, err := i.Addrs()
+		if err != nil {
+			return 0, errors.WithStack(err)
+		}
+		for _, addr := range addrs {
+			if e, ok := addr.(*net.IPNet); ok && e.IP.To4() != nil {
+				if netip.AddrFrom4([4]byte(e.IP.To4())) == laddr {
+					return i.MTU, nil
+				}
+			}
+		}
+	}
+
+	return 0, errors.Errorf("not found adapter %s mtu", laddr.String())
 }

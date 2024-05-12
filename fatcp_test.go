@@ -36,7 +36,6 @@ func Test_TCP_Conn(t *testing.T) {
 		cfg   = &Config{
 			Handshake:       sign,
 			MaxRecvBuffSize: 1536,
-			MTU:             1500,
 			RecvErrLimit:    8,
 		}
 	)

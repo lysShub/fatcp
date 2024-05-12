@@ -80,7 +80,6 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 				},
 
 				MaxRecvBuffSize: 1536,
-				MTU:             1500,
 			}
 		)
 		require.NoError(t, cfg.Init())
@@ -133,7 +132,6 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 				},
 
 				MaxRecvBuffSize: 1536,
-				MTU:             1500,
 			}
 		)
 		c, s := test.NewMockRaw(
