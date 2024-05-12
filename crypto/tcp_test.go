@@ -61,7 +61,7 @@ func Test_Tcp_Base(t *testing.T) {
 
 	for _, size := range []int{0, 1, 5, 16, 1024, 1480} {
 
-		p, pseudoSum1 := buildTCP(t, size, false)
+		p, pseudoSum1 := buildTCP(t, size, true)
 
 		c, err := crypto.NewTCP(key, pseudoSum1)
 		require.NoError(t, err)

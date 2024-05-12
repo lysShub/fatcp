@@ -33,6 +33,10 @@ func NewAdapter(addr netip.Addr) *Adapter {
 
 // GetPort get a local machine port
 func (a *Adapter) GetPort(proto tcpip.TransportProtocolNumber, remote netip.AddrPort) (port uint16, err error) {
+	if !remote.IsValid() {
+		return 0, errors.Errorf("invalid remote address %s", remote)
+	}
+
 	// try reuse alloced port, require remote-addr differently
 	a.mu.RLock()
 	for k, v := range a.ports {

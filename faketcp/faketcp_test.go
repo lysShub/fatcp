@@ -16,11 +16,11 @@ func Test_FakeTCP(t *testing.T) {
 	var pseudoSum1 uint16 = 1111
 
 	var f = faketcp.New(
-		19986, 8080, nil,
+		19986, 8080,
 		faketcp.PseudoSum1(pseudoSum1),
 	)
 
-	var p = packet.Make(0, 16)
+	var p = packet.Make(faketcp.Overhead, 16)
 
 	f.AttachSend(p)
 	require.Equal(t, 16+20, p.Data())
