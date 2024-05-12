@@ -125,7 +125,9 @@ func (f *FakeTCP) DetachRecv(tcp *packet.Packet) error {
 	if debug.Debug() {
 		hdr := header.TCP(tcp.Bytes())
 		require.True(test.T(), Is(hdr))
-		test.ValidTCP(test.T(), hdr, *f.pseudoSum1)
+		if f.pseudoSum1 != nil {
+			test.ValidTCP(test.T(), hdr, *f.pseudoSum1)
+		}
 	}
 
 	hdr := header.TCP(tcp.Bytes())
