@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lysShub/fatcp/crypto"
 	"github.com/lysShub/fatcp/faketcp"
 	"github.com/lysShub/fatcp/ustack"
 	"github.com/lysShub/fatcp/ustack/gonet"
@@ -26,10 +25,8 @@ import (
 	"github.com/lysShub/rawsock/test"
 )
 
-const Overhead = faketcp.Overhead + peerSize
-
 // security datagram conn
-type Conn struct {
+type Conn[A Attacher] struct {
 	config     *Config
 	raw        rawsock.RawConn
 	clientPort uint16
@@ -59,8 +56,8 @@ const (
 	server role = 2
 )
 
-func newConn(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) (*Conn, error) {
-	var c = &Conn{
+func newConn[A Attacher](raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) (*Conn[A], error) {
+	var c = &Conn[A]{
 		config: config,
 		raw:    raw,
 		role:   role,
@@ -83,7 +80,7 @@ func newConn(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Co
 	return c, nil
 }
 
-func (c *Conn) close(cause error) error {
+func (c *Conn[A]) close(cause error) error {
 	if c.closeErr.CompareAndSwap(nil, &os.ErrClosed) {
 		if c.tcp != nil {
 			// maybe closed before, ignore return error
@@ -120,21 +117,24 @@ func (c *Conn) close(cause error) error {
 	return *c.closeErr.Load()
 }
 
-func (c *Conn) outboundService() error {
-	var pkt = packet.Make(c.config.MTU)
+func (c *Conn[A]) outboundService() error {
+	var (
+		pkt      = packet.Make(c.config.MTU)
+		builtin  = ((*new(A)).Builtin()).(A)
+		overhead = Overhead[A]()
+	)
 
 	for {
-		err := c.ep.Outbound(c.srvCtx, pkt.Sets(Overhead, 0xffff))
+		err := c.ep.Outbound(c.srvCtx, pkt.Sets(overhead, 0xffff))
 		if err != nil {
 			return c.close(err)
 		}
 		if debug.Debug() {
-			require.GreaterOrEqual(test.T(), pkt.Head(), Overhead)
-			require.GreaterOrEqual(test.T(), pkt.Tail(), crypto.Overhead)
+			require.GreaterOrEqual(test.T(), pkt.Head(), overhead)
 		}
 
 		if c.state.Load() == transmit {
-			err = c.Send(c.srvCtx, pkt, BuiltinPeer)
+			err = c.Send(c.srvCtx, pkt, builtin)
 			if err != nil {
 				return c.close(err)
 			}
@@ -147,22 +147,29 @@ func (c *Conn) outboundService() error {
 	}
 }
 
-func (c *Conn) MTU() int { return c.ep.MTU() + Overhead }
+func Overhead[A Attacher]() int {
+	var a A
+	return a.Overhead() + faketcp.Overhead
+}
 
-// BuiltinTCP get builtin tcp conn, require call c.Recv asynchronous, at the same time.
-func (c *Conn) BuiltinTCP(ctx context.Context) (net.Conn, error) {
+func (c *Conn[A]) MTU() int { return c.config.MTU }
+
+// BuiltinTCP get builtin tcp connect, require call c.Recv asynchronous, at the same time.
+func (c *Conn[A]) BuiltinTCP(ctx context.Context) (net.Conn, error) {
 	if err := c.handshake(ctx); err != nil {
 		return nil, err
 	}
 	return c.tcp, nil
 }
 
-func (c *Conn) Send(ctx context.Context, pkt *packet.Packet, id Peer) (err error) {
+func (c *Conn[A]) Send(ctx context.Context, pkt *packet.Packet, id A) (err error) {
 	if err := c.handshake(ctx); err != nil {
 		return err
 	}
 
-	encode(pkt, id)
+	if err := id.Encode(pkt); err != nil {
+		return err
+	}
 	c.fake.AttachSend(pkt)
 
 	if debug.Debug() {
@@ -172,16 +179,16 @@ func (c *Conn) Send(ctx context.Context, pkt *packet.Packet, id Peer) (err error
 	return err
 }
 
-func (c *Conn) recv(ctx context.Context, pkt *packet.Packet) error {
+func (c *Conn[A]) recv(ctx context.Context, pkt *packet.Packet) error {
 	if c.handshakeRecvSegs.pop(pkt) {
 		return nil
 	}
 	return c.raw.Read(ctx, pkt)
 }
 
-func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error) {
+func (c *Conn[A]) Recv(ctx context.Context, pkt *packet.Packet) (id A, err error) {
 	if err := c.handshake(ctx); err != nil {
-		return Peer{}, err
+		return *new(A), err
 	}
 
 	head := pkt.Head()
@@ -189,7 +196,7 @@ func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error
 		// todo: 如果server之间close, 可以导致接受到原始的RST, 可能导致decode等出现panic
 		err = c.recv(ctx, pkt.Sets(head, 0xffff))
 		if err != nil {
-			return Peer{}, err
+			return *new(A), err
 		}
 
 		err = c.fake.DetachRecv(pkt)
@@ -198,24 +205,23 @@ func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error
 				continue
 			}
 			if c.tinyCnt++; c.tinyCnt > c.config.RecvErrLimit {
-				return Peer{}, errors.WithStack(&ErrRecvTooManyErrors{err})
+				return *new(A), errors.WithStack(&ErrRecvTooManyErrors{err})
 			}
 
 			// todo: temporary
 			var attr = slog.String("ip", fmt.Sprintf("%+v", pkt.SetHead(head).Bytes()))
 			slog.Error(err.Error(), attr)
 
-			return Peer{}, errorx.WrapTemp(err)
+			return *new(A), errorx.WrapTemp(err)
 		}
 
-		id, err = decode(pkt)
-		if err != nil {
-			return Peer{}, err
+		if err := id.Decode(pkt); err != nil {
+			return *new(A), err
 		}
 		if debug.Debug() {
 			require.True(test.T(), id.Valid())
 		}
-		if id == BuiltinPeer {
+		if id.IsBuiltin() {
 			c.inboundControlPacket(pkt)
 			continue
 		}
@@ -234,7 +240,7 @@ type ErrInvalidPacket struct{}
 func (e *ErrInvalidPacket) Error() string   { return "invalid packet" }
 func (e *ErrInvalidPacket) Temporary() bool { return true }
 
-func (c *Conn) inboundControlPacket(pkt *packet.Packet) {
+func (c *Conn[A]) inboundControlPacket(pkt *packet.Packet) {
 	// if the data packet passes through the NAT gateway, on handshake
 	// step, the client port will be change automatically, after handshake, need manually
 	// change client port.
@@ -246,6 +252,6 @@ func (c *Conn) inboundControlPacket(pkt *packet.Packet) {
 	c.ep.Inbound(pkt)
 }
 
-func (c *Conn) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
-func (c *Conn) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
-func (c *Conn) Close() error               { return c.close(nil) }
+func (c *Conn[A]) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
+func (c *Conn[A]) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
+func (c *Conn[A]) Close() error               { return c.close(nil) }
