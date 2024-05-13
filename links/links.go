@@ -60,7 +60,7 @@ type Downlinker struct {
 	Port uint16 // client port
 }
 
-func (l *Downlinker) Donwlink(ctx context.Context, pkt *packet.Packet, peer fatcp.Peer) error {
+func (l *Downlinker) Donwlink(ctx context.Context, pkt *packet.Packet, peer *fatcp.Peer) error {
 	switch peer.Proto {
 	case header.TCPProtocolNumber:
 		header.TCP(pkt.Bytes()).SetDestinationPort(l.Port)
@@ -73,7 +73,7 @@ func (l *Downlinker) Donwlink(ctx context.Context, pkt *packet.Packet, peer fatc
 }
 
 type Conn struct {
-	*fatcp.Conn
+	*fatcp.Conn[*fatcp.Peer]
 	refs atomic.Int32
 }
 
