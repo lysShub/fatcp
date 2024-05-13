@@ -194,7 +194,7 @@ func (c *Conn[A]) Recv(ctx context.Context, payload *packet.Packet) (id A, err e
 
 	head := payload.Head()
 	for {
-		// todo: 如果server之间close, 可以导致接受到原始的RST, 可能导致decode等出现panic
+		// todo: 如果server直接close, 可以导致接受到原始的RST, 可能导致decode等出现panic
 		err = c.recv(ctx, payload.Sets(head, 0xffff))
 		if err != nil {
 			return id, err
