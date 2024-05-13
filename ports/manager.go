@@ -98,3 +98,11 @@ func (p *Manager) DelUDPPort(port uint16) error {
 	}
 	return l.Close()
 }
+
+func (p *Manager) Addr() netip.Addr {
+	addr, ok := netip.AddrFromSlice(p.tcpAddr.IP)
+	if !ok {
+		panic(p.tcpAddr.IP)
+	}
+	return addr
+}
