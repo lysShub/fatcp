@@ -42,7 +42,7 @@ const (
 	closed     uint32 = 4
 )
 
-func (c *Conn) handshake(ctx context.Context) (err error) {
+func (c *Conn[A]) handshake(ctx context.Context) (err error) {
 	if !c.state.CompareAndSwap(initial, handshake1) {
 		c.handshakedNotify.Wait() // handshake started, wait finish
 		return nil
@@ -114,11 +114,11 @@ func (c *Conn) handshake(ctx context.Context) (err error) {
 	return nil
 }
 
-func (c *Conn) handshakeInboundService(ctx context.Context) error {
-	var pkt = packet.Make(c.config.MTU)
+func (c *Conn[A]) handshakeInboundService(ctx context.Context) error {
+	var tcp = packet.Make(c.config.MTU)
 
 	for {
-		err := c.raw.Read(ctx, pkt.SetHead(0))
+		err := c.raw.Read(ctx, tcp.SetHead(0))
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil
@@ -127,31 +127,37 @@ func (c *Conn) handshakeInboundService(ctx context.Context) error {
 		}
 
 		if debug.Debug() {
-			old := pkt.Head()
-			pkt.SetHead(0)
-			test.ValidIP(test.P(), pkt.Bytes())
-			pkt.SetHead(old)
+			old := tcp.Head()
+			tcp.SetHead(0)
+			test.ValidIP(test.P(), tcp.Bytes())
+			tcp.SetHead(old)
 		}
 
-		if faketcp.Is(pkt.Bytes()) {
-			seg := pkt.Clone()
+		// todo: 如果对面直接RST，此数据包应该inbuound
+		if faketcp.Is(tcp.Bytes()) {
+			seg := tcp.Clone()
 
 			if c.state.Load() >= handshake2 &&
 				c.fake.DetachRecv(seg) == nil &&
-				isBuiltin(seg) {
+				isBuiltin[A](seg) {
 
-				c.inboundControlPacket(seg)
+				c.inboundBuitinPacket(seg)
 			} else {
-				c.handshakeRecvSegs.put(pkt)
+				c.handshakeRecvSegs.put(tcp)
 			}
 
 			if c.state.Load() == transmit {
 				return nil
 			}
 		} else {
-			c.ep.Inbound(pkt)
+			c.ep.Inbound(tcp)
 		}
 	}
+}
+
+func isBuiltin[A Attacher](seg *packet.Packet) bool {
+	var a A
+	return a.Decode(seg) == nil && a.IsBuiltin()
 }
 
 type tcpFactory interface {
@@ -193,6 +199,7 @@ func (s *serverFactory) factory(ctx context.Context) (*gonet.TCPConn, error) {
 
 func (s *serverFactory) Close() error { return nil }
 
+// todo: 会同时pop/put, 此时会有竞争
 // heap simple heap buff, only support concurrent pop,
 // and not support cross pop/put operate.
 type heap struct {

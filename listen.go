@@ -16,7 +16,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
-type Listener struct {
+type Listener[A Attacher] struct {
 	config *Config
 	raw    rawsock.Listener
 
@@ -26,7 +26,7 @@ type Listener struct {
 	closeErr atomic.Pointer[error]
 }
 
-func Listen(addr string, config *Config) (*Listener, error) {
+func Listen[A Attacher](addr string, config *Config) (*Listener[A], error) {
 	laddr, err := resolve(addr, true)
 	if err != nil {
 		return nil, err
@@ -36,18 +36,18 @@ func Listen(addr string, config *Config) (*Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewListener(rawl, config)
+	return NewListener[A](rawl, config)
 }
 
-func NewListener(l rawsock.Listener, config *Config) (*Listener, error) {
+func NewListener[A Attacher](l rawsock.Listener, config *Config) (*Listener[A], error) {
 	if err := config.Init(l.Addr().Addr()); err != nil {
 		return nil, err
 	}
-	var li = &Listener{config: config, raw: l}
+	var li = &Listener[A]{config: config, raw: l}
 	var err error
 
 	if li.stack, err = ustack.NewUstack(
-		link.NewList(64, config.MTU), l.Addr().Addr(),
+		link.NewList(64, config.MTU-Overhead[A]()), l.Addr().Addr(),
 	); err != nil {
 		return nil, li.close(err)
 	}
@@ -63,7 +63,7 @@ func NewListener(l rawsock.Listener, config *Config) (*Listener, error) {
 	return li, nil
 }
 
-func (l *Listener) close(cause error) error {
+func (l *Listener[A]) close(cause error) error {
 	if l.closeErr.CompareAndSwap(nil, &net.ErrClosed) {
 		if l.l != nil {
 			if err := l.l.Close(); err != nil {
@@ -89,11 +89,11 @@ func (l *Listener) close(cause error) error {
 	return *l.closeErr.Load()
 }
 
-func (l *Listener) Accept() (*Conn, error) {
+func (l *Listener[A]) Accept() (*Conn[A], error) {
 	return l.AcceptCtx(context.Background())
 }
 
-func (l *Listener) AcceptCtx(ctx context.Context) (*Conn, error) {
+func (l *Listener[A]) AcceptCtx(ctx context.Context) (*Conn[A], error) {
 	raw, err := l.raw.Accept() // todo: raw support context
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func (l *Listener) AcceptCtx(ctx context.Context) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := newConn(raw, ep, server, l.config)
+	conn, err := newConn[A](raw, ep, server, l.config)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +111,6 @@ func (l *Listener) AcceptCtx(ctx context.Context) (*Conn, error) {
 	return conn, nil
 }
 
-func (l *Listener) Addr() netip.AddrPort { return l.raw.Addr() }
+func (l *Listener[A]) Addr() netip.AddrPort { return l.raw.Addr() }
 
-func (l *Listener) Close() error { return l.close(nil) }
+func (l *Listener[A]) Close() error { return l.close(nil) }
