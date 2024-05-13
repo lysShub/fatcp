@@ -156,10 +156,6 @@ func (e *LinkEndpoint) Inbound(tcp *packet.Packet) {
 		require.Equal(test.T(), e.LocalAddr(), dst)
 	}
 	e.stack.Inbound(tcp)
-
-	// s := e.stack.Stack().Stats()
-	// fmt.Println(uintptr(unsafe.Pointer(e.stack.Stack())))
-	// fmt.Printf("%+v\n\n", s.TCP)
 }
 func (e *LinkEndpoint) Outbound(ctx context.Context, tcp *packet.Packet) error {
 	return e.stack.OutboundBy(ctx, e.remoteAddr, tcp)

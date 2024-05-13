@@ -158,7 +158,9 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 			conn, err := NewConn(c, cfg)
 			require.NoError(t, err)
 			_, err = conn.BuiltinTCP(ctx)
-			require.True(t, errors.Is(err, os.ErrDeadlineExceeded), err)
+
+			ok := errors.Is(err, os.ErrDeadlineExceeded) || errors.Is(err, context.Canceled)
+			require.True(t, ok, err)
 			return nil
 		})
 

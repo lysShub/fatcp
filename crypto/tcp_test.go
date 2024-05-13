@@ -87,7 +87,7 @@ func Test_Tcp_NAT(t *testing.T) {
 		key = [crypto.Bytes]byte{0: 1}
 	)
 
-	p, pseudoSum1 := buildTCP(t, 16, false)
+	p, pseudoSum1 := buildTCP(t, 16, true)
 
 	c, err := crypto.NewTCP(key, pseudoSum1)
 	require.NoError(t, err)

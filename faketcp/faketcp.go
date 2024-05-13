@@ -131,6 +131,12 @@ func (f *FakeTCP) DetachRecv(tcp *packet.Packet) error {
 	}
 
 	hdr := header.TCP(tcp.Bytes())
+	// todo: 传入的数据包可能是任何数据，不能导致panic, 增加测试
+	// if len(hdr) < header.TCPMinimumSize {
+	// }
+	// if offset := int(hdr.DataOffset()); offset < header.TCPMinimumSize || offset > len(hdr) {
+	// }
+
 	f.rcvNxt.Store(max(f.rcvNxt.Load(), hdr.SequenceNumber()+uint32(len(hdr.Payload()))))
 
 	// remove tcp header
