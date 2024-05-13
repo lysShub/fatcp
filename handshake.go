@@ -141,7 +141,7 @@ func (c *Conn[A]) handshakeInboundService(ctx context.Context) error {
 				c.fake.DetachRecv(seg) == nil &&
 				isBuiltin[A](seg) {
 
-				c.inboundControlPacket(seg)
+				c.inboundBuitinPacket(seg)
 			} else {
 				c.handshakeRecvSegs.put(tcp)
 			}
@@ -199,6 +199,7 @@ func (s *serverFactory) factory(ctx context.Context) (*gonet.TCPConn, error) {
 
 func (s *serverFactory) Close() error { return nil }
 
+// todo: 会同时pop/put, 此时会有竞争
 // heap simple heap buff, only support concurrent pop,
 // and not support cross pop/put operate.
 type heap struct {

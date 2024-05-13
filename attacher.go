@@ -15,10 +15,14 @@ import (
 )
 
 type Attacher interface {
-	Overhead() int
+	// new a Attacher vaiable(not nil if pointer), require New().IsBuiltin()==false and
+	// New().Valid()==false.
+	New() Attacher
+
 	Builtin() Attacher
 	IsBuiltin() bool
 	Valid() bool
+	Overhead() int
 	String() string
 	Encode(pkt *packet.Packet) error
 	Decode(pkt *packet.Packet) error
@@ -31,16 +35,15 @@ type Peer struct {
 
 var _ Attacher = (*Peer)(nil)
 
-func (p *Peer) Overhead() int { return 5 }
+func (p *Peer) New() Attacher { return &Peer{} }
 
 var _builtinPeer = &Peer{Remote: netip.IPv4Unspecified(), Proto: tcp.ProtocolNumber}
 
 func (p *Peer) Builtin() Attacher { return _builtinPeer }
-
 func (id *Peer) IsBuiltin() bool {
 	return id.Valid() && id.Remote.IsUnspecified() && id.Proto == tcp.ProtocolNumber
 }
-
+func (p *Peer) Overhead() int { return 5 }
 func (id *Peer) Valid() bool {
 	return id != nil && id.Remote.IsValid() && id.Remote.Is4() &&
 		(id.Proto == tcp.ProtocolNumber || id.Proto == udp.ProtocolNumber)
