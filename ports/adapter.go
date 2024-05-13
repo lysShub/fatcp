@@ -116,6 +116,8 @@ func (a *Adapter) DelPort(proto tcpip.TransportProtocolNumber, port uint16, remo
 	return nil
 }
 
+func (a *Adapter) Addr() netip.Addr { return a.mgr.Addr() }
+
 func (a *Adapter) Close() (err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
