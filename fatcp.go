@@ -208,7 +208,10 @@ func (c *Conn) Recv(ctx context.Context, pkt *packet.Packet) (id Peer, err error
 			return Peer{}, errorx.WrapTemp(err)
 		}
 
-		id = decode(pkt)
+		id, err = decode(pkt)
+		if err != nil {
+			return Peer{}, err
+		}
 		if debug.Debug() {
 			require.True(test.T(), id.Valid())
 		}
@@ -225,6 +228,11 @@ type ErrRecvTooManyErrors struct{ error }
 func (e *ErrRecvTooManyErrors) Error() string {
 	return fmt.Sprintf("fatcp recv too many error: %s", e.error.Error())
 }
+
+type ErrInvalidPacket struct{}
+
+func (e *ErrInvalidPacket) Error() string   { return "invalid packet" }
+func (e *ErrInvalidPacket) Temporary() bool { return true }
 
 func (c *Conn) inboundControlPacket(pkt *packet.Packet) {
 	// if the data packet passes through the NAT gateway, on handshake

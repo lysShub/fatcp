@@ -138,7 +138,7 @@ func (c *Conn) handshakeInboundService(ctx context.Context) error {
 
 			if c.state.Load() >= handshake2 &&
 				c.fake.DetachRecv(seg) == nil &&
-				decode(seg) == BuiltinPeer {
+				isBuiltin(seg) {
 
 				c.inboundControlPacket(seg)
 			} else {

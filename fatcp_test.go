@@ -31,8 +31,8 @@ var sign = &Sign{
 
 func Test_BuiltinTCP(t *testing.T) {
 	var (
-		caddr = netip.AddrPortFrom(test.LocIP(), 19986) // test.RandPort()
-		saddr = netip.AddrPortFrom(test.LocIP(), 8080)  // test.RandPort()
+		caddr = netip.AddrPortFrom(test.LocIP(), 19986)
+		saddr = netip.AddrPortFrom(test.LocIP(), 8080)
 		cfg   = &Config{
 			Handshake:    sign,
 			MTU:          1500,
