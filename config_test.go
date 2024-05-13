@@ -18,9 +18,10 @@ import (
 )
 
 func Test_NotCrypto(t *testing.T) {
+
 	var (
-		caddr = netip.AddrPortFrom(test.LocIP(), 19986) // test.RandPort()
-		saddr = netip.AddrPortFrom(test.LocIP(), 8080)  // test.RandPort()
+		caddr = netip.AddrPortFrom(test.LocIP(), 19986)
+		saddr = netip.AddrPortFrom(test.LocIP(), 8080)
 		cfg   = &Config{
 			Handshake:    &NotCrypto{},
 			MTU:          1500,
@@ -36,7 +37,7 @@ func Test_NotCrypto(t *testing.T) {
 
 	// echo server
 	eg.Go(func() error {
-		l, err := NewListener(test.NewMockListener(t, s), cfg)
+		l, err := NewListener[*Peer](test.NewMockListener(t, s), cfg)
 		require.NoError(t, err)
 		defer l.Close()
 
@@ -60,7 +61,7 @@ func Test_NotCrypto(t *testing.T) {
 
 	// client
 	eg.Go(func() error {
-		conn, err := NewConn(c, cfg)
+		conn, err := NewConn[*Peer](c, cfg)
 		require.NoError(t, err)
 		defer conn.Close()
 
