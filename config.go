@@ -34,7 +34,7 @@ func (c *Config) Init(laddr netip.Addr) (err error) {
 		if i, err := ifaceByAddr(laddr); err != nil {
 			return err
 		} else {
-			c.MTU = i.Index
+			c.MTU = i.MTU
 		}
 	}
 

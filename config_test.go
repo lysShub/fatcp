@@ -81,3 +81,11 @@ func Test_NotCrypto(t *testing.T) {
 
 	eg.Wait()
 }
+
+func Test_MTU(t *testing.T) {
+	var cfg = &Config{}
+	err := cfg.Init(test.LocIP())
+	require.NoError(t, err)
+
+	require.Greater(t, cfg.MTU, 512)
+}
