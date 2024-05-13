@@ -202,16 +202,13 @@ func (c *Conn[A]) Recv(ctx context.Context, payload *packet.Packet) (id A, err e
 
 		err = c.fake.DetachRecv(payload)
 		if err != nil {
-			if time.Since(c.handshakedTime) < time.Second*3 {
-				continue
-			}
 			if c.tinyCnt++; c.tinyCnt > c.config.RecvErrLimit {
 				return id, errors.WithStack(&ErrRecvTooManyErrors{err})
 			}
 
 			// todo: temporary
 			var attr = slog.String("ip", fmt.Sprintf("%+v", payload.SetHead(head).Bytes()))
-			slog.Error(err.Error(), attr)
+			slog.Warn(err.Error(), attr, errorx.Trace(err))
 
 			return id, errorx.WrapTemp(err)
 		}
