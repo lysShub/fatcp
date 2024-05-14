@@ -90,7 +90,7 @@ func (p *Peer) Decode(seg *packet.Packet) (err error) {
 
 	b := seg.Bytes()
 	if len(b) < 5 {
-		return errors.WithStack(&ErrInvalidPacket{})
+		return errors.New("invalid segment")
 	}
 
 	p.Proto = tcpip.TransportProtocolNumber(b[0])

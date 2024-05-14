@@ -5,10 +5,12 @@ import (
 	"io"
 	"math/rand"
 	"net/netip"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/lysShub/fatcp/ustack"
 	"github.com/lysShub/fatcp/ustack/gonet"
@@ -19,7 +21,6 @@ import (
 	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock/test"
 	"github.com/stretchr/testify/require"
-	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
@@ -36,10 +37,9 @@ func Test_Conn(t *testing.T) {
 		caddr, saddr,
 		test.ValidAddr, test.ValidChecksum,
 	)
+	eg, _ := errgroup.WithContext(context.Background())
 
-	var rets = make(chan string, 1)
-
-	go func() {
+	eg.Go(func() error {
 		st, err := ustack.NewUstack(link.NewList(16, 1536), saddr.Addr())
 		require.NoError(t, err)
 		UnicomStackAndRaw(t, st, s)
@@ -53,13 +53,14 @@ func Test_Conn(t *testing.T) {
 		defer conn.Close()
 
 		_, err = io.Copy(conn, conn)
-		if !IsGvisorClose(err) {
-			require.NoError(t, err)
+		if errors.Is(err, syscall.WSAECONNRESET) {
+			return nil
 		}
-		rets <- "server"
-	}()
+		return err
+	})
 
-	go func() { // client
+	eg.Go(func() error {
+		time.Sleep(time.Second)
 		st, err := ustack.NewUstack(link.NewList(16, 1536), caddr.Addr())
 		require.NoError(t, err)
 		UnicomStackAndRaw(t, st, c)
@@ -73,9 +74,10 @@ func Test_Conn(t *testing.T) {
 		defer conn.Close()
 
 		test.ValidPingPongConn(t, r, conn, 0xffff)
-	}()
 
-	<-rets
+		return nil
+	})
+	require.NoError(t, eg.Wait())
 }
 
 func Test_Conn_Client(t *testing.T) {
@@ -91,10 +93,9 @@ func Test_Conn_Client(t *testing.T) {
 		caddr, saddr,
 		test.ValidAddr, test.ValidChecksum,
 	)
+	eg, _ := errgroup.WithContext(context.Background())
 
-	var rets = make(chan string, 1)
-
-	go func() { // server
+	eg.Go(func() error {
 		st, err := ustack.NewUstack(link.NewList(16, 1536), saddr.Addr())
 		require.NoError(t, err)
 		UnicomStackAndRawBy(t, st, s, caddr)
@@ -108,13 +109,12 @@ func Test_Conn_Client(t *testing.T) {
 		defer conn.Close()
 
 		_, err = io.Copy(conn, conn)
-		if !IsGvisorClose(err) {
-			require.NoError(t, err)
+		if errors.Is(err, syscall.WSAECONNRESET) {
+			return nil
 		}
-		rets <- "server"
-	}()
-
-	go func() {
+		return err
+	})
+	eg.Go(func() error {
 		st, err := ustack.NewUstack(link.NewList(16, 1536), caddr.Addr())
 		require.NoError(t, err)
 		UnicomStackAndRaw(t, st, c)
@@ -128,9 +128,9 @@ func Test_Conn_Client(t *testing.T) {
 		defer conn.Close()
 
 		test.ValidPingPongConn(t, r, conn, 0xffff)
-	}()
-
-	<-rets
+		return nil
+	})
+	require.NoError(t, eg.Wait())
 }
 
 func Test_Conn_Clients(t *testing.T) {
@@ -153,9 +153,9 @@ func Test_Conn_Clients(t *testing.T) {
 		caddr2, saddr,
 		test.ValidAddr, test.ValidChecksum,
 	)
+	eg, _ := errgroup.WithContext(context.Background())
 
-	// server
-	go func() {
+	eg.Go(func() error {
 		st, err := ustack.NewUstack(link.NewList(16, 1536), saddr.Addr())
 		require.NoError(t, err)
 		UnicomStackAndRawBy(t, st, s1, caddr1)
@@ -165,23 +165,23 @@ func Test_Conn_Clients(t *testing.T) {
 		require.NoError(t, err)
 		defer l.Close()
 
-		for {
+		for i := 0; i < 2; i++ {
 			conn, err := l.Accept(context.Background())
 			require.NoError(t, err)
 
-			go func() {
+			eg.Go(func() error {
 				_, err = io.Copy(conn, conn)
-				if !IsGvisorClose(err) {
-					require.NoError(t, err)
+				if errors.Is(err, syscall.WSAECONNRESET) {
+					return nil
 				}
-			}()
+				return err
+			})
 		}
-	}()
+		return nil
+	})
 
-	var rets = make(chan string, 2)
-
-	// client 1
-	go func() {
+	// client1
+	eg.Go(func() error {
 		st, err := ustack.NewUstack(link.NewList(16, 1536), caddr1.Addr())
 		require.NoError(t, err)
 		UnicomStackAndRaw(t, st, c1)
@@ -195,11 +195,10 @@ func Test_Conn_Clients(t *testing.T) {
 		defer conn.Close()
 
 		test.ValidPingPongConn(t, r1, conn, 0xffff)
-		rets <- "client1"
-	}()
-
-	// client 2
-	go func() {
+		return nil
+	})
+	// client2
+	eg.Go(func() error {
 		st, err := ustack.NewUstack(link.NewList(16, 1536), caddr2.Addr())
 		require.NoError(t, err)
 		UnicomStackAndRaw(t, st, c2)
@@ -213,11 +212,9 @@ func Test_Conn_Clients(t *testing.T) {
 		defer conn.Close()
 
 		test.ValidPingPongConn(t, r2, conn, 4086)
-		rets <- "client2"
-	}()
-
-	t.Log(<-rets, "retrun")
-	t.Log(<-rets, "retrun")
+		return nil
+	})
+	require.NoError(t, eg.Wait())
 }
 
 func UnicomStackAndRaw(t *testing.T, s ustack.Ustack, raw rawsock.RawConn) {
@@ -229,8 +226,6 @@ func UnicomStackAndRaw(t *testing.T, s ustack.Ustack, raw rawsock.RawConn) {
 			if pkt.Data() == 0 {
 				return
 			}
-
-			// fmt.Println("inbound")
 
 			err := raw.Write(context.Background(), pkt)
 			require.NoError(t, err)
@@ -250,8 +245,6 @@ func UnicomStackAndRaw(t *testing.T, s ustack.Ustack, raw rawsock.RawConn) {
 				return
 			}
 			require.NoError(t, err)
-
-			// fmt.Println("outbound")
 
 			pkt.SetHead(64)
 			test.ValidIP(t, pkt.Bytes())
@@ -296,21 +289,4 @@ func UnicomStackAndRawBy(t *testing.T, s ustack.Ustack, raw rawsock.RawConn, dst
 			s.Inbound(p)
 		}
 	}()
-}
-
-func Base(err error) error {
-	e := errors.Unwrap(err)
-	if e == nil {
-		return err
-	}
-	return Base(e)
-}
-
-func IsGvisorClose(err error) bool {
-	if err == nil {
-		return false
-	}
-	err = Base(err)
-
-	return err.Error() == (&tcpip.ErrConnectionReset{}).String()
 }

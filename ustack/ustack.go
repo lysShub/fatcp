@@ -17,7 +17,6 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
-	"gvisor.dev/gvisor/pkg/tcpip/network/ipv6"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 )
@@ -51,21 +50,17 @@ const nicid tcpip.NICID = 1234
 
 // todo: set no tcp delay
 func NewUstack(link link.Link, addr netip.Addr) (Ustack, error) {
+	if !addr.Is4() {
+		return nil, errors.New("only support ipv4")
+	}
 	var u = &ustack{
-		addr: addr,
-		link: link,
+		addr:  addr,
+		proto: header.IPv4ProtocolNumber,
+		link:  link,
 	}
 
-	var npf stack.NetworkProtocolFactory
-	if addr.Is4() {
-		u.proto = header.IPv4ProtocolNumber
-		npf = ipv4.NewProtocol
-	} else {
-		u.proto = header.IPv6ProtocolNumber
-		npf = ipv6.NewProtocol
-	}
 	u.stack = stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocolFactory{npf},
+		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol},
 		TransportProtocols: []stack.TransportProtocolFactory{tcp.NewProtocol},
 		HandleLocal:        false,
 	})

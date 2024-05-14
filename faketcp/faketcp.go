@@ -1,12 +1,12 @@
 package faketcp
 
 import (
+	"errors"
 	"math"
 	"math/rand"
 	"sync/atomic"
 
 	"github.com/lysShub/fatcp/crypto"
-	"github.com/lysShub/netkit/errorx"
 	"github.com/lysShub/netkit/packet"
 	"github.com/stretchr/testify/require"
 
@@ -18,8 +18,6 @@ import (
 
 const Overhead = 20
 
-// record tcp seq/ack, not care handshake/clode, etc.
-// todo: more reasonable wnd
 type FakeTCP struct {
 	lport, rport uint16
 	sndNxt       atomic.Uint32
@@ -104,7 +102,6 @@ func (f *FakeTCP) AttachSend(seg *packet.Packet) {
 		f.sndNxt.Add(uint32(payload))
 		tcp := header.TCP(seg.Bytes())
 		psum := checksum.Combine(*f.pseudoSum1, uint16(len(tcp)))
-
 		sum := checksum.Checksum(tcp, psum)
 		tcp.SetChecksum(^sum)
 
@@ -119,7 +116,7 @@ func (f *FakeTCP) AttachSend(seg *packet.Packet) {
 func (f *FakeTCP) DetachRecv(tcp *packet.Packet) error {
 	if f.crypto != nil {
 		if err := f.crypto.Decrypt(tcp); err != nil {
-			return errorx.WrapTemp(err)
+			return err
 		}
 	}
 	if debug.Debug() {
@@ -131,11 +128,12 @@ func (f *FakeTCP) DetachRecv(tcp *packet.Packet) error {
 	}
 
 	hdr := header.TCP(tcp.Bytes())
-	// todo: 传入的数据包可能是任何数据，不能导致panic, 增加测试
-	// if len(hdr) < header.TCPMinimumSize {
-	// }
-	// if offset := int(hdr.DataOffset()); offset < header.TCPMinimumSize || offset > len(hdr) {
-	// }
+	if len(hdr) < header.TCPMinimumSize ||
+		hdr.DataOffset() < header.TCPMinimumSize ||
+		hdr.DataOffset() > header.TCPHeaderMaximumSize ||
+		int(hdr.DataOffset()) > len(hdr) {
+		return errors.New("invalid tcp packet")
+	}
 
 	f.rcvNxt.Store(max(f.rcvNxt.Load(), hdr.SequenceNumber()+uint32(len(hdr.Payload()))))
 
@@ -146,7 +144,7 @@ func (f *FakeTCP) DetachRecv(tcp *packet.Packet) error {
 
 // is faketcp segment: without tcp options
 func Is(tcp header.TCP) bool {
-	return tcp.DataOffset() == header.TCPMinimumSize
+	return len(tcp) >= header.TCPMinimumSize && tcp.DataOffset() == header.TCPMinimumSize
 }
 
 // ToNot make to not-fack tcp packet, requir tcp with correct tcp checksume.
