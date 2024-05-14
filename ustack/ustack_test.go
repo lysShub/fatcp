@@ -5,7 +5,6 @@ import (
 	"io"
 	"math/rand"
 	"net/netip"
-	"syscall"
 	"testing"
 	"time"
 
@@ -53,7 +52,7 @@ func Test_Conn(t *testing.T) {
 		defer conn.Close()
 
 		_, err = io.Copy(conn, conn)
-		if errors.Is(err, syscall.WSAECONNRESET) {
+		if errors.Is(err, gonet.ErrConnectReset) {
 			return nil
 		}
 		return err
@@ -109,7 +108,7 @@ func Test_Conn_Client(t *testing.T) {
 		defer conn.Close()
 
 		_, err = io.Copy(conn, conn)
-		if errors.Is(err, syscall.WSAECONNRESET) {
+		if errors.Is(err, gonet.ErrConnectReset) {
 			return nil
 		}
 		return err
@@ -171,7 +170,7 @@ func Test_Conn_Clients(t *testing.T) {
 
 			eg.Go(func() error {
 				_, err = io.Copy(conn, conn)
-				if errors.Is(err, syscall.WSAECONNRESET) {
+				if errors.Is(err, gonet.ErrConnectReset) {
 					return nil
 				}
 				return err
