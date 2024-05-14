@@ -2,8 +2,6 @@ package fatcp
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"net"
 	"net/netip"
 	"os"
@@ -167,14 +165,14 @@ func (c *Conn[A]) Send(ctx context.Context, payload *packet.Packet, id A) (err e
 		return err
 	}
 
-	if err := id.Encode(payload); err != nil {
-		return err
-	}
-	c.fake.AttachSend(payload)
-
 	if debug.Debug() {
 		require.True(test.T(), id.Valid())
 	}
+	if err := id.Encode(payload); err != nil {
+		return errorx.WrapTemp(err)
+	}
+	c.fake.AttachSend(payload)
+
 	err = c.raw.Write(ctx, payload)
 	return err
 }
@@ -194,7 +192,6 @@ func (c *Conn[A]) Recv(ctx context.Context, payload *packet.Packet) (id A, err e
 
 	head := payload.Head()
 	for {
-		// todo: 如果server直接close, 可以导致接受到原始的RST, 可能导致decode等出现panic
 		err = c.recv(ctx, payload.Sets(head, 0xffff))
 		if err != nil {
 			return id, err
@@ -203,22 +200,21 @@ func (c *Conn[A]) Recv(ctx context.Context, payload *packet.Packet) (id A, err e
 		err = c.fake.DetachRecv(payload)
 		if err != nil {
 			if c.tinyCnt++; c.tinyCnt > c.config.RecvErrLimit {
-				return id, errors.WithStack(&ErrRecvTooManyErrors{err})
+				return id, errors.New("recv too many error")
 			}
-
-			// todo: temporary
-			var attr = slog.String("ip", fmt.Sprintf("%+v", payload.SetHead(head).Bytes()))
-			slog.Warn(err.Error(), attr, errorx.Trace(err))
-
 			return id, errorx.WrapTemp(err)
 		}
 
 		if err := id.Decode(payload); err != nil {
-			return id, err
+			if c.tinyCnt++; c.tinyCnt > c.config.RecvErrLimit {
+				return id, errors.New("recv too many error")
+			}
+			return id, errorx.WrapTemp(err)
 		}
 		if debug.Debug() {
 			require.True(test.T(), id.Valid())
 		}
+
 		if id.IsBuiltin() {
 			c.inboundBuitinPacket(payload)
 			continue
@@ -226,17 +222,6 @@ func (c *Conn[A]) Recv(ctx context.Context, payload *packet.Packet) (id A, err e
 		return id, nil
 	}
 }
-
-type ErrRecvTooManyErrors struct{ error }
-
-func (e *ErrRecvTooManyErrors) Error() string {
-	return fmt.Sprintf("fatcp recv too many error: %s", e.error.Error())
-}
-
-type ErrInvalidPacket struct{}
-
-func (e *ErrInvalidPacket) Error() string   { return "invalid packet" }
-func (e *ErrInvalidPacket) Temporary() bool { return true }
 
 func (c *Conn[A]) inboundBuitinPacket(tcp *packet.Packet) {
 	// if the data packet passes through the NAT gateway, on handshake

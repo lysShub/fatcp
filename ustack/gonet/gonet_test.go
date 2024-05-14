@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/netip"
 	"testing"
+	"time"
 
 	"github.com/lysShub/fatcp/ustack"
 	"github.com/lysShub/fatcp/ustack/gonet"
@@ -80,6 +81,8 @@ func newDuplexLink(t require.TestingT, ctx context.Context) (c, s link.Link) {
 			}
 			require.NoError(t, err)
 
+			// fmt.Println("c-->s")
+
 			s.Inbound(pkt.SetHead(0))
 			// require.NoError(t, p.WriteIP(pkt.Bytes()))
 		}
@@ -94,10 +97,63 @@ func newDuplexLink(t require.TestingT, ctx context.Context) (c, s link.Link) {
 			}
 			require.NoError(t, err)
 
+			// fmt.Println("s-->c")
+
 			c.Inbound(pkt.SetHead(0))
 			// require.NoError(t, p.WriteIP(pkt.Bytes()))
 		}
 	}()
 
 	return c, s
+}
+
+func Test_Keeplive(t *testing.T) {
+	var (
+		wg, ctx         = errgroup.WithContext(context.Background())
+		caddr           = netip.AddrPortFrom(test.RandIP(), 19986)
+		saddr           = netip.AddrPortFrom(test.RandIP(), 8080)
+		linkCtx, cancel = context.WithCancel(ctx)
+		cl, sl          = newDuplexLink(t, linkCtx)
+	)
+	defer cancel()
+
+	wg.Go(func() error {
+		us, err := ustack.NewUstack(sl, saddr.Addr())
+		require.NoError(t, err)
+
+		l, err := gonet.ListenTCP(us, saddr, header.IPv4ProtocolNumber)
+		require.NoError(t, err)
+
+		conn, err := l.Accept(ctx)
+		require.NoError(t, err)
+
+		_, err = io.CopyN(conn, conn, 0xff)
+		require.NoError(t, err)
+
+		cancel()
+		return nil
+	})
+
+	wg.Go(func() error {
+		time.Sleep(time.Second)
+		uc, err := ustack.NewUstack(cl, caddr.Addr())
+		require.NoError(t, err)
+
+		conn, err := gonet.DialTCPWithBind(ctx, uc, caddr, saddr, header.IPv4ProtocolNumber)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		test.ValidPingPongConn(t, rand.New(rand.NewSource(0)), conn, 0xff)
+
+		s := time.Now()
+		n, err := conn.Read(make([]byte, 1))
+		dur := time.Since(s)
+		require.Zero(t, n)
+		require.Contains(t, err.Error(), "timed out", err)
+		require.InDelta(t, time.Second*6, dur, float64(time.Second))
+		return nil
+	})
+
+	err := wg.Wait()
+	require.NoError(t, err)
 }

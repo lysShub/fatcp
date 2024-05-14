@@ -241,6 +241,16 @@ type TCPConn struct {
 
 // NewTCPConn creates a new TCPConn.
 func NewTCPConn(wq *waiter.Queue, ep tcpip.Endpoint) *TCPConn {
+	var (
+		idle     = tcpip.KeepaliveIdleOption(time.Second * 3)
+		interval = tcpip.KeepaliveIntervalOption(time.Second)
+		count    = 3
+	)
+	ep.SocketOptions().SetKeepAlive(true)
+	ep.SetSockOpt(&idle)
+	ep.SetSockOpt(&interval)
+	ep.SetSockOptInt(tcpip.KeepaliveCountOption, count)
+
 	c := &TCPConn{
 		wq: wq,
 		ep: ep,
