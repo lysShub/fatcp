@@ -4,14 +4,11 @@ import (
 	"context"
 	"net"
 	"net/netip"
-	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/lysShub/fatcp/faketcp"
 	"github.com/lysShub/fatcp/ustack"
-	"github.com/lysShub/fatcp/ustack/gonet"
 	"github.com/lysShub/netkit/errorx"
 	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock"
@@ -44,7 +41,7 @@ type Conn[A Attacher] struct {
 
 	srvCtx    context.Context
 	srvCancel context.CancelFunc
-	closeErr  atomic.Pointer[error]
+	closeErr  errorx.CloseErr
 }
 
 type role uint8
@@ -79,40 +76,23 @@ func newConn[A Attacher](raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role
 }
 
 func (c *Conn[A]) close(cause error) error {
-	if c.closeErr.CompareAndSwap(nil, &os.ErrClosed) {
-		if c.tcp != nil {
-			// maybe closed before, ignore return error
-			c.tcp.Close()
+	return c.closeErr.Close(func() (errs []error) {
+		errs = append(errs, cause)
 
-			// wait tcp close finished
-			if gotcp, ok := c.tcp.(*gonet.TCPConn); ok {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-				defer cancel()
-				gotcp.WaitSentDataRecvByPeer(ctx)
-			}
+		if c.tcp != nil {
+			errs = append(errs, c.tcp.Close())
 		}
 		if c.ep != nil {
-			if err := c.ep.Close(); err != nil {
-				cause = err
-			}
+			errs = append(errs, c.ep.Close())
 		}
-
 		if c.srvCancel != nil {
 			c.srvCancel()
 		}
-
 		if c.raw != nil {
-			if err := c.raw.Close(); err != nil {
-				cause = err
-			}
+			errs = append(errs, c.raw.Close())
 		}
-
-		if cause != nil {
-			c.closeErr.Store(&cause)
-		}
-		return cause
-	}
-	return *c.closeErr.Load()
+		return
+	})
 }
 
 func (c *Conn[A]) outboundService() error {
