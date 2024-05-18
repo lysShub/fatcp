@@ -48,7 +48,7 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 
 	// echo server
 	eg.Go(func() error {
-		l, err := NewListener[*Peer](test.NewMockListener(t, s), cfg)
+		l, err := NewListener[Mocker](test.NewMockListener(t, s), cfg)
 		require.NoError(t, err)
 		defer l.Close()
 
@@ -72,7 +72,7 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 
 	// client
 	eg.Go(func() error {
-		conn, err := NewConn[*Peer](c, cfg)
+		conn, err := NewConn[Mocker](c, cfg)
 		require.NoError(t, err)
 		defer conn.Close()
 
@@ -116,7 +116,7 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 		// echo server
 		eg.Go(func() error {
 			defer s.Close()
-			l, err := NewListener[*Peer](test.NewMockListener(t, s), cfg)
+			l, err := NewListener[Mocker](test.NewMockListener(t, s), cfg)
 			require.NoError(t, err)
 
 			conn, err := l.Accept()
@@ -138,7 +138,7 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 
 		// client
 		eg.Go(func() error {
-			conn, err := NewConn[*Peer](c, cfg)
+			conn, err := NewConn[Mocker](c, cfg)
 			require.NoError(t, err)
 			defer conn.Close()
 

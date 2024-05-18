@@ -37,7 +37,7 @@ func Test_NotCrypto(t *testing.T) {
 
 	// echo server
 	eg.Go(func() error {
-		l, err := NewListener[*Peer](test.NewMockListener(t, s), cfg)
+		l, err := NewListener[Mocker](test.NewMockListener(t, s), cfg)
 		require.NoError(t, err)
 		defer l.Close()
 
@@ -61,7 +61,7 @@ func Test_NotCrypto(t *testing.T) {
 
 	// client
 	eg.Go(func() error {
-		conn, err := NewConn[*Peer](c, cfg)
+		conn, err := NewConn[Mocker](c, cfg)
 		require.NoError(t, err)
 		defer conn.Close()
 
