@@ -79,6 +79,27 @@ func NewUstack(link link.Link, addr netip.Addr) (Ustack, error) {
 		{Destination: header.IPv6EmptySubnet, NIC: nicid},
 	})
 
+	// 设置TCP RTO范围, 太大的MaxRTO可能导致tcp keepalive不能被及时触发。tcp endpoint 中是靠
+	// timer触发keepalive的, 过大的RTO, 可能导致上次设置的timer还没被触发, 又被Reset成更大的时长,
+	// 类似:
+	//   for i := 1; ; i++ {
+	//   	timer.Reset(i * 2 * time.Second)
+	//   	time.Sleep(i * time.Second)
+	//   }
+	//
+	var (
+		minRTO = tcpip.TCPMinRTOOption(time.Millisecond * 50)
+		maxRTO = tcpip.TCPMaxRTOOption(time.Millisecond * 500)
+	)
+	e := u.stack.SetTransportProtocolOption(tcp.ProtocolNumber, &minRTO)
+	if e != nil && !e.IgnoreStats() {
+		return nil, errors.New(e.String())
+	}
+	e = u.stack.SetTransportProtocolOption(tcp.ProtocolNumber, &maxRTO)
+	if e != nil && !e.IgnoreStats() {
+		return nil, errors.New(e.String())
+	}
+
 	return u, nil
 }
 
