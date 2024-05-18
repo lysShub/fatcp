@@ -54,7 +54,7 @@ func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (*Conn[A], error) 
 	}
 	// stack = test.MustWrapPcap(fmt.Sprintf("client-ctr-%d.pcap", raw.LocalAddr().Port()), stack)
 
-	ep, err := stack.LinkEndpoint(raw.LocalAddr().Port(), raw.RemoteAddr())
+	ep, err := ustack.NewLinkEndpoint(stack, raw.LocalAddr().Port(), raw.RemoteAddr())
 	if err != nil {
 		return nil, err
 	}

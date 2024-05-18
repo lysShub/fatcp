@@ -81,6 +81,14 @@ func (c *Conn[A]) close(cause error) error {
 
 		if c.tcp != nil {
 			errs = append(errs, c.tcp.Close())
+
+			if gconn, ok := c.tcp.(interface {
+				WaitSentDataRecvByPeer(context.Context) (uint32, uint32, error)
+			}); ok {
+				ctx, cancel := context.WithTimeout(c.srvCtx, time.Second*3)
+				defer cancel()
+				gconn.WaitSentDataRecvByPeer(ctx)
+			}
 		}
 		if c.ep != nil {
 			errs = append(errs, c.ep.Close())

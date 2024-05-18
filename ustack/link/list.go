@@ -54,8 +54,6 @@ var _ stack.LinkEndpoint = (*List)(nil)
 
 func (l *List) SynClose(timeout time.Duration) error {
 	if l.closed.CompareAndSwap(false, true) {
-		l.closed.Store(true)
-
 		if err := l.list.Close(); err != nil {
 			return err
 		}

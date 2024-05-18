@@ -112,8 +112,12 @@ func (u *ustack) Stack() *stack.Stack { return u.stack }
 func (u *ustack) Addr() netip.Addr    { return u.addr }
 func (u *ustack) MTU() int            { return int(u.link.MTU()) }
 func (u *ustack) LinkEndpoint(localPort uint16, remoteAddr netip.AddrPort) (*LinkEndpoint, error) {
-	return NewLinkEndpoint(u, localPort, remoteAddr)
+	return NewLinkEndpoint(ustackNotCloseWrap{u}, localPort, remoteAddr)
 }
+
+type ustackNotCloseWrap struct{ *ustack }
+
+func (ustackNotCloseWrap) Close() error { return nil }
 
 func (u *ustack) Inbound(ip *packet.Packet) { u.link.Inbound(ip) }
 
@@ -152,7 +156,7 @@ func NewLinkEndpoint(stack Ustack, localPort uint16, remoteAddr netip.AddrPort) 
 	return ep, nil
 }
 
-func (e *LinkEndpoint) Close() error  { return nil }
+func (e *LinkEndpoint) Close() error  { return e.stack.Close() }
 func (e *LinkEndpoint) Stack() Ustack { return e.stack }
 func (e *LinkEndpoint) MTU() int      { return e.stack.MTU() }
 func (e *LinkEndpoint) LocalAddr() netip.AddrPort {

@@ -358,7 +358,7 @@ func commonRead(ctx context.Context, b []byte, ep tcpip.Endpoint, wq *waiter.Que
 
 	if _, ok := err.(*tcpip.ErrWouldBlock); ok {
 		// Create wait queue entry that notifies a channel.
-		waitEntry, notifyCh := waiter.NewChannelEntry(0x1f | waiter.EventRdNorm | waiter.EventWrNorm | waiter.EventRdHUp)
+		waitEntry, notifyCh := waiter.NewChannelEntry(waiter.ReadableEvents)
 		wq.EventRegister(&waitEntry)
 		defer wq.EventUnregister(&waitEntry)
 		for {
