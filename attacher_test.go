@@ -16,4 +16,7 @@ func (m Mocker) Valid() bool                     { return m.builtin }
 func (m Mocker) Overhead() int                   { return 0 }
 func (m Mocker) String() string                  { return "mocker" }
 func (m Mocker) Encode(pkt *packet.Packet) error { return nil }
-func (m Mocker) Decode(pkt *packet.Packet) error { return nil }
+func (m Mocker) Decode(pkt *packet.Packet) error {
+	m.valid = true
+	return nil
+}
