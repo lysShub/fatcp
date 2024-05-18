@@ -247,9 +247,9 @@ func NewTCPConn(wq *waiter.Queue, ep tcpip.Endpoint) *TCPConn {
 		count    = 3
 	)
 	ep.SocketOptions().SetKeepAlive(true)
-	ep.SetSockOpt(&idle)
-	ep.SetSockOpt(&interval)
-	ep.SetSockOptInt(tcpip.KeepaliveCountOption, count)
+	_ = ep.SetSockOpt(&idle)
+	_ = ep.SetSockOpt(&interval)
+	_ = ep.SetSockOptInt(tcpip.KeepaliveCountOption, count)
 
 	c := &TCPConn{
 		wq: wq,
@@ -358,7 +358,7 @@ func commonRead(ctx context.Context, b []byte, ep tcpip.Endpoint, wq *waiter.Que
 
 	if _, ok := err.(*tcpip.ErrWouldBlock); ok {
 		// Create wait queue entry that notifies a channel.
-		waitEntry, notifyCh := waiter.NewChannelEntry(waiter.ReadableEvents)
+		waitEntry, notifyCh := waiter.NewChannelEntry(0x1f | waiter.EventRdNorm | waiter.EventWrNorm | waiter.EventRdHUp)
 		wq.EventRegister(&waitEntry)
 		defer wq.EventUnregister(&waitEntry)
 		for {

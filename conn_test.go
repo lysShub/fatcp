@@ -29,7 +29,8 @@ var sign = &Sign{
 	},
 }
 
-func Test_BuiltinTCP(t *testing.T) {
+func Test_BuiltinTCP_Connect(t *testing.T) {
+	// test builtin-tcp transmit data as normal tcp connect
 	var (
 		caddr = netip.AddrPortFrom(test.LocIP(), 19986)
 		saddr = netip.AddrPortFrom(test.LocIP(), 8080)
@@ -40,8 +41,7 @@ func Test_BuiltinTCP(t *testing.T) {
 		}
 	)
 	c, s := test.NewMockRaw(
-		t, header.TCPProtocolNumber,
-		caddr, saddr,
+		t, header.TCPProtocolNumber, caddr, saddr,
 		test.ValidAddr, test.ValidChecksum, test.PacketLoss(0.1), test.Delay(time.Millisecond*50),
 	)
 	eg, ctx := errgroup.WithContext(context.Background())
@@ -92,4 +92,79 @@ func Test_BuiltinTCP(t *testing.T) {
 	})
 
 	eg.Wait()
+}
+
+func Test_BuiltinTCP_Keepalive(t *testing.T) {
+	// test builtin-tcp transmit data as normal tcp connect
+	var (
+		caddr = netip.AddrPortFrom(test.LocIP(), 19986)
+		saddr = netip.AddrPortFrom(test.LocIP(), 8080)
+		cfg   = &Config{
+			Handshake:    sign,
+			MTU:          1500,
+			RecvErrLimit: 8,
+		}
+	)
+
+	t.Run("server-shutdown/client-read", func(t *testing.T) {
+		c, s := test.NewMockRaw(
+			t, header.TCPProtocolNumber, caddr, saddr,
+			test.ValidAddr, test.ValidChecksum, test.PacketLoss(0.1), test.Delay(time.Millisecond*50),
+		)
+		eg, ctx := errgroup.WithContext(context.Background())
+
+		// echo server
+		eg.Go(func() error {
+			defer s.Close()
+			l, err := NewListener[*Peer](test.NewMockListener(t, s), cfg)
+			require.NoError(t, err)
+
+			conn, err := l.Accept()
+			require.NoError(t, err)
+
+			eg.Go(func() error {
+				var p = packet.From(make([]byte, cfg.MTU))
+				_, err := conn.Recv(ctx, p)
+				require.True(t, errors.Is(err, net.ErrClosed), err)
+				return nil
+			})
+
+			tcp, err := conn.BuiltinTCP(ctx)
+			require.NoError(t, err)
+
+			io.ReadFull(tcp, make([]byte, 0xff))
+			return nil
+		})
+
+		// client
+		eg.Go(func() error {
+			conn, err := NewConn[*Peer](c, cfg)
+			require.NoError(t, err)
+			defer conn.Close()
+
+			eg.Go(func() error {
+				var p = packet.Make(0, cfg.MTU)
+				_, err := conn.Recv(ctx, p)
+				require.True(t, errors.Is(err, net.ErrClosed), err)
+				return nil
+			})
+
+			handshakeCtx, cancel := context.WithTimeout(ctx, time.Second*5)
+			defer cancel()
+			tcp, err := conn.BuiltinTCP(handshakeCtx)
+			require.NoError(t, err)
+			n, err := tcp.Write(make([]byte, 0xff))
+			require.NoError(t, err)
+			require.Equal(t, 0xff, n)
+
+			n, err = tcp.Read(make([]byte, 1))
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "timed out")
+			require.Zero(t, n)
+			return nil
+		})
+
+		eg.Wait()
+	})
+
 }
