@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/netip"
 	"sync/atomic"
-	"time"
 
 	"github.com/lysShub/fatcp/crypto"
 	"github.com/lysShub/fatcp/faketcp"
@@ -23,10 +22,10 @@ import (
 	流程：
 		handshake1完成后，（handshak2阶段）等待对方握手完成，期间将不会主动发送数据包。判定对方握手完成的依据是我方
 		在握手期间发送的数据包全部被对方收到--WaitSentDataRecvByPeer。
-		a. 对于outboundService，在handshak2完成后，发送的是control-segment包, 而不是原始的tcp数据包。
+		a. 对于outboundService，在handshak2完成后，发送的是fake-builtin包, 而不是原始的tcp数据包。
 		b. 对于handshakeInboundService，在handshak2完成后，才能退出。
-		c. 如果handshakeInboundService运行时收到segment包，若此时hanshake1已经完成，应该尝试decode，session-id是CtrSessID
-			必须inbound stack，否则应该将其暂存。
+		c. 如果handshakeInboundService运行时收到fake包；若此时hanshake1已经完成，应该尝试decode，如果是builtin数据包
+			必须inbound stack；否则应该将其暂存。
 		d. 如果Recv收到非segment包，应该忽略。
 
 		c/d 属于边界情况，一般不会有太多数据包处于这种状态。
@@ -36,7 +35,7 @@ type state = atomic.Uint32
 
 const (
 	initial    uint32 = 0
-	handshake1 uint32 = 1 // send finish
+	handshake1 uint32 = 1 // handshake send data stage
 	handshake2 uint32 = 2 // wait peer recved all data
 	transmit   uint32 = 3
 	closed     uint32 = 4
@@ -81,23 +80,20 @@ func (c *conn[A]) handshake(ctx context.Context) (err error) {
 		tcpip.AddrFromSlice(c.raw.RemoteAddr().Addr().AsSlice()),
 		0,
 	)
+
+	var opt func(*faketcp.FakeTCP)
 	if key == (crypto.Key{}) {
-		c.fake = faketcp.New(
-			c.raw.LocalAddr().Port(),
-			c.raw.RemoteAddr().Port(),
-			faketcp.PseudoSum1(pseudoSum1),
-		)
+		opt = faketcp.PseudoSum1(pseudoSum1)
 	} else {
 		cpt, err := crypto.NewTCP(key, pseudoSum1)
 		if err != nil {
 			return err
 		}
-		c.fake = faketcp.New(
-			c.raw.LocalAddr().Port(),
-			c.raw.RemoteAddr().Port(),
-			faketcp.Crypto(cpt),
-		)
+		opt = faketcp.Crypto(cpt)
+
 	}
+	c.fake = faketcp.New(c.raw.LocalAddr().Port(), c.raw.RemoteAddr().Port(), opt)
+
 	c.state.CompareAndSwap(handshake1, handshake2)
 
 	// wait before writen data be recved by peer.
@@ -107,18 +103,17 @@ func (c *conn[A]) handshake(ctx context.Context) (err error) {
 		c.fake.InitNxt(sndnxt, rcvnxt)
 	}
 
-	c.handshakedTime = time.Now()
 	c.tcp = tcp
 	c.state.CompareAndSwap(handshake2, transmit)
 	c.handshakedNotify.Done()
 	return nil
 }
 
-func (c *conn[A]) handshakeInboundService(ctx context.Context) error {
-	var tcp = packet.Make(c.config.MTU)
+func (c *conn[A]) handshakeInboundService(ctx context.Context) (_ error) {
+	var pkt = packet.Make(c.config.MTU)
 
 	for {
-		err := c.raw.Read(ctx, tcp.SetHead(0))
+		err := c.raw.Read(ctx, pkt.SetHead(0))
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil
@@ -127,37 +122,47 @@ func (c *conn[A]) handshakeInboundService(ctx context.Context) error {
 		}
 
 		if debug.Debug() {
-			old := tcp.Head()
-			tcp.SetHead(0)
-			test.ValidIP(test.P(), tcp.Bytes())
-			tcp.SetHead(old)
+			old := pkt.Head()
+			pkt.SetHead(0)
+			test.ValidIP(test.P(), pkt.Bytes())
+			pkt.SetHead(old)
 		}
 
-		// todo: 如果对面直接RST，此数据包应该inbuound
-		if faketcp.Is(tcp.Bytes()) {
-			seg := tcp.Clone()
-
-			if c.state.Load() >= handshake2 &&
-				c.fake.DetachRecv(seg) == nil &&
-				isBuiltin[A](seg) {
-
-				c.inboundBuitinPacket(seg)
-			} else {
-				c.handshakeRecvSegs.put(tcp)
-			}
-
-			if c.state.Load() == transmit {
+		if faketcp.Is(pkt.Bytes()) {
+			switch state := c.state.Load(); state {
+			case handshake1:
+				// handshake1 state can't call c.fake, only ignore it
+			case handshake2:
+				// try DetachRecv, if builtin should Inbound, otherwise temporary cache
+				if tcp := c.isBuiltinFakePacket(pkt.Clone()); tcp != nil {
+					c.ep.Inbound(tcp)
+				} else {
+					c.handshakeRecvedFakePackets.put(pkt)
+				}
+			case transmit:
+				// try DetachRecv, if builtin should Inbound, otherwise ignore it
+				if tcp := c.isBuiltinFakePacket(pkt.Clone()); tcp != nil {
+					c.ep.Inbound(tcp)
+				}
 				return nil
+			default:
+				return c.close(errors.Errorf("unexpect state %d", state))
 			}
 		} else {
-			c.ep.Inbound(tcp)
+			c.ep.Inbound(pkt)
 		}
 	}
 }
 
-func isBuiltin[A Attacher](seg *packet.Packet) bool {
-	var a A
-	return a.Decode(seg) == nil && a.IsBuiltin()
+func (c *conn[A]) isBuiltinFakePacket(pkt *packet.Packet) (tcp *packet.Packet) {
+	if err := c.fake.DetachRecv(pkt); err != nil {
+		return nil
+	}
+	var a = *(new(A))
+	if a.Decode(pkt) == nil && a.IsBuiltin() {
+		return pkt
+	}
+	return nil
 }
 
 type tcpFactory interface {
@@ -199,9 +204,8 @@ func (s *serverFactory) factory(ctx context.Context) (*gonet.TCPConn, error) {
 
 func (s *serverFactory) Close() error { return nil }
 
-// todo: 会同时pop/put, 此时会有竞争
 // heap simple heap buff, only support concurrent pop,
-// and not support cross pop/put operate.
+// and not support cross pop/put or concurrent put operate.
 type heap struct {
 	data [heapsize]*packet.Packet // desc operate
 	idx  atomic.Int32

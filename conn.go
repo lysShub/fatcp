@@ -28,9 +28,8 @@ type conn[A Attacher] struct {
 	state      state
 	tinyCnt    int
 
-	handshakedTime    time.Time
-	handshakedNotify  sync.WaitGroup
-	handshakeRecvSegs *heap
+	handshakedNotify           sync.WaitGroup
+	handshakeRecvedFakePackets *heap
 
 	ep      *ustack.LinkEndpoint
 	factory tcpFactory
@@ -54,7 +53,7 @@ func (c *conn[A]) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, 
 	c.config = config
 	c.raw = raw
 	c.role = role
-	c.handshakeRecvSegs = &heap{}
+	c.handshakeRecvedFakePackets = &heap{}
 	c.ep = ep
 
 	switch role {
@@ -159,7 +158,7 @@ func (c *conn[A]) Send(ctx context.Context, atter A, payload *packet.Packet) (er
 }
 
 func (c *conn[A]) recv(ctx context.Context, pkt *packet.Packet) error {
-	if c.handshakeRecvSegs.pop(pkt) {
+	if c.handshakeRecvedFakePackets.pop(pkt) {
 		return nil
 	}
 	return c.raw.Read(ctx, pkt)
