@@ -20,8 +20,7 @@ import (
 	"github.com/lysShub/rawsock/test"
 )
 
-// security datagram conn
-type Conn[A Attacher] struct {
+type conn[A Attacher] struct {
 	config     *Config
 	raw        rawsock.RawConn
 	clientPort uint16
@@ -51,31 +50,29 @@ const (
 	server role = 2
 )
 
-func newConn[A Attacher](raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) (*Conn[A], error) {
-	var c = &Conn[A]{
-		config: config,
-		raw:    raw,
-		role:   role,
+func (c *conn[A]) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) error {
+	c.config = config
+	c.raw = raw
+	c.role = role
+	c.handshakeRecvSegs = &heap{}
+	c.ep = ep
 
-		handshakeRecvSegs: &heap{},
-		ep:                ep,
-	}
 	switch role {
 	case client:
 		c.clientPort = raw.LocalAddr().Port()
 	case server:
 		c.clientPort = raw.RemoteAddr().Port()
 	default:
-		return nil, errors.Errorf("unknown role %d", role)
+		return errors.Errorf("unknown role %d", role)
 	}
 	c.handshakedNotify.Add(1)
 	c.srvCtx, c.srvCancel = context.WithCancel(context.Background())
 
 	go c.outboundService()
-	return c, nil
+	return nil
 }
 
-func (c *Conn[A]) close(cause error) error {
+func (c *conn[A]) close(cause error) error {
 	return c.closeErr.Close(func() (errs []error) {
 		errs = append(errs, cause)
 
@@ -103,11 +100,11 @@ func (c *Conn[A]) close(cause error) error {
 	})
 }
 
-func (c *Conn[A]) outboundService() error {
+func (c *conn[A]) outboundService() error {
 	var (
 		pkt      = packet.Make(c.config.MTU)
 		builtin  = ((*new(A)).Builtin()).(A)
-		overhead = Overhead[A]()
+		overhead = c.Overhead()
 	)
 
 	for {
@@ -120,7 +117,7 @@ func (c *Conn[A]) outboundService() error {
 		}
 
 		if c.state.Load() == transmit {
-			err = c.Send(c.srvCtx, pkt, builtin)
+			err = c.Send(c.srvCtx, builtin, pkt)
 			if err != nil {
 				return c.close(err)
 			}
@@ -133,30 +130,26 @@ func (c *Conn[A]) outboundService() error {
 	}
 }
 
-func Overhead[A Attacher]() int {
-	var a A
-	return a.Overhead() + faketcp.Overhead
-}
-
-func (c *Conn[A]) MTU() int { return c.config.MTU }
+func (c *conn[A]) Overhead() int { return (*new(A)).Overhead() + faketcp.Overhead }
+func (c *conn[A]) MTU() int      { return c.config.MTU }
 
 // BuiltinTCP get builtin tcp connect, require call c.Recv asynchronous, at the same time.
-func (c *Conn[A]) BuiltinTCP(ctx context.Context) (net.Conn, error) {
+func (c *conn[A]) BuiltinTCP(ctx context.Context) (net.Conn, error) {
 	if err := c.handshake(ctx); err != nil {
 		return nil, err
 	}
 	return c.tcp, nil
 }
 
-func (c *Conn[A]) Send(ctx context.Context, payload *packet.Packet, id A) (err error) {
+func (c *conn[A]) Send(ctx context.Context, atter A, payload *packet.Packet) (err error) {
 	if err := c.handshake(ctx); err != nil {
 		return err
 	}
 
 	if debug.Debug() {
-		require.True(test.T(), id.Valid())
+		require.True(test.T(), atter.Valid())
 	}
-	if err := id.Encode(payload); err != nil {
+	if err := atter.Encode(payload); err != nil {
 		return errorx.WrapTemp(err)
 	}
 	c.fake.AttachSend(payload)
@@ -165,39 +158,38 @@ func (c *Conn[A]) Send(ctx context.Context, payload *packet.Packet, id A) (err e
 	return err
 }
 
-func (c *Conn[A]) recv(ctx context.Context, pkt *packet.Packet) error {
+func (c *conn[A]) recv(ctx context.Context, pkt *packet.Packet) error {
 	if c.handshakeRecvSegs.pop(pkt) {
 		return nil
 	}
 	return c.raw.Read(ctx, pkt)
 }
 
-func (c *Conn[A]) Recv(ctx context.Context, payload *packet.Packet) (id A, err error) {
-	id = id.New().(A)
+func (c *conn[A]) Recv(ctx context.Context, id A, payload *packet.Packet) (err error) {
 	if err := c.handshake(ctx); err != nil {
-		return id, err
+		return err
 	}
 
 	head := payload.Head()
 	for {
 		err = c.recv(ctx, payload.Sets(head, 0xffff))
 		if err != nil {
-			return id, err
+			return err
 		}
 
 		err = c.fake.DetachRecv(payload)
 		if err != nil {
 			if c.tinyCnt++; c.tinyCnt > c.config.RecvErrLimit {
-				return id, errors.New("recv too many error")
+				return errors.New("recv too many error")
 			}
-			return id, errorx.WrapTemp(err)
+			return errorx.WrapTemp(err)
 		}
 
 		if err := id.Decode(payload); err != nil {
 			if c.tinyCnt++; c.tinyCnt > c.config.RecvErrLimit {
-				return id, errors.New("recv too many error")
+				return errors.New("recv too many error")
 			}
-			return id, errorx.WrapTemp(err)
+			return errorx.WrapTemp(err)
 		}
 		if debug.Debug() {
 			require.True(test.T(), id.Valid())
@@ -207,11 +199,11 @@ func (c *Conn[A]) Recv(ctx context.Context, payload *packet.Packet) (id A, err e
 			c.inboundBuitinPacket(payload)
 			continue
 		}
-		return id, nil
+		return nil
 	}
 }
 
-func (c *Conn[A]) inboundBuitinPacket(tcp *packet.Packet) {
+func (c *conn[A]) inboundBuitinPacket(tcp *packet.Packet) {
 	// if the data packet passes through the NAT gateway, on handshake
 	// step, the client port will be change automatically, after handshake, need manually
 	// change client port.
@@ -223,6 +215,6 @@ func (c *Conn[A]) inboundBuitinPacket(tcp *packet.Packet) {
 	c.ep.Inbound(tcp)
 }
 
-func (c *Conn[A]) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
-func (c *Conn[A]) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
-func (c *Conn[A]) Close() error               { return c.close(nil) }
+func (c *conn[A]) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
+func (c *conn[A]) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
+func (c *conn[A]) Close() error               { return c.close(nil) }

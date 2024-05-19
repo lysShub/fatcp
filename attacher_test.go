@@ -1,22 +1,25 @@
 package fatcp
 
-import "github.com/lysShub/netkit/packet"
+import (
+	"github.com/lysShub/netkit/packet"
+)
 
-type Mocker struct {
+type Mocker = *mocker
+
+type mocker struct {
 	valid   bool
 	builtin bool
 }
 
-var _ Attacher = &Mocker{}
+var _ Attacher = &mocker{}
 
-func (m Mocker) New() Attacher                   { return Mocker{} }
-func (m Mocker) Builtin() Attacher               { return Mocker{valid: true, builtin: true} }
-func (m Mocker) IsBuiltin() bool                 { return m.builtin }
-func (m Mocker) Valid() bool                     { return m.builtin }
-func (m Mocker) Overhead() int                   { return 0 }
-func (m Mocker) String() string                  { return "mocker" }
-func (m Mocker) Encode(pkt *packet.Packet) error { return nil }
-func (m Mocker) Decode(pkt *packet.Packet) error {
+func (m *mocker) Builtin() Attacher               { return &mocker{valid: true, builtin: true} }
+func (m *mocker) IsBuiltin() bool                 { return m.builtin }
+func (m *mocker) Valid() bool                     { return m.builtin }
+func (m *mocker) Overhead() int                   { return 0 }
+func (m *mocker) String() string                  { return "mocker" }
+func (m *mocker) Encode(pkt *packet.Packet) error { return nil }
+func (m *mocker) Decode(pkt *packet.Packet) error {
 	m.valid = true
 	return nil
 }

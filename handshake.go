@@ -42,7 +42,7 @@ const (
 	closed     uint32 = 4
 )
 
-func (c *Conn[A]) handshake(ctx context.Context) (err error) {
+func (c *conn[A]) handshake(ctx context.Context) (err error) {
 	if !c.state.CompareAndSwap(initial, handshake1) {
 		c.handshakedNotify.Wait() // handshake started, wait finish
 		return nil
@@ -114,7 +114,7 @@ func (c *Conn[A]) handshake(ctx context.Context) (err error) {
 	return nil
 }
 
-func (c *Conn[A]) handshakeInboundService(ctx context.Context) error {
+func (c *conn[A]) handshakeInboundService(ctx context.Context) error {
 	var tcp = packet.Make(c.config.MTU)
 
 	for {

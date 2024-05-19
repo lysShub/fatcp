@@ -5,10 +5,6 @@ import (
 )
 
 type Attacher interface {
-	// new a Attacher vaiable(not nil if pointer), require New().IsBuiltin()==false and
-	// New().Valid()==false.
-	New() Attacher
-
 	Builtin() Attacher
 	IsBuiltin() bool
 	Valid() bool

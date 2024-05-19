@@ -12,11 +12,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Dial[A Attacher](server string, config *Config) (*Conn[A], error) {
+func Dial[A Attacher](server string, config *Config) (*conn[A], error) {
 	return DialCtx[A](context.Background(), server, config)
 }
 
-func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*Conn[A], error) {
+func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*conn[A], error) {
 	raddr, err := resolve(server, false)
 	if err != nil {
 		return nil, err
@@ -40,13 +40,14 @@ func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*C
 	return conn, nil
 }
 
-func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (*Conn[A], error) {
+func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (*conn[A], error) {
 	if err := config.Init(raw.LocalAddr().Addr()); err != nil {
 		return nil, err
 	}
+	var conn = &conn[A]{}
 
 	stack, err := ustack.NewUstack(
-		link.NewList(8, config.MTU-Overhead[A]()),
+		link.NewList(8, config.MTU-conn.Overhead()),
 		raw.LocalAddr().Addr(),
 	)
 	if err != nil {
@@ -59,8 +60,7 @@ func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (*Conn[A], error) 
 		return nil, err
 	}
 
-	conn, err := newConn[A](raw, ep, client, config)
-	if err != nil {
+	if err := conn.init(raw, ep, client, config); err != nil {
 		return nil, conn.close(err)
 	}
 	conn.factory = &clientFactory{

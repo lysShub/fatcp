@@ -58,7 +58,9 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 
 		eg.Go(func() error {
 			var p = packet.From(make([]byte, cfg.MTU))
-			_, err := conn.Recv(ctx, p)
+			var atter = &mocker{}
+
+			err := conn.Recv(ctx, atter, p)
 			require.True(t, errors.Is(err, net.ErrClosed), err)
 			return nil
 		})
@@ -78,7 +80,9 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 
 		eg.Go(func() error {
 			var p = packet.Make(0, cfg.MTU)
-			_, err := conn.Recv(ctx, p)
+			var atter = &mocker{}
+
+			err := conn.Recv(ctx, atter, p)
 			require.True(t, errors.Is(err, net.ErrClosed), err)
 			return nil
 		})
@@ -124,7 +128,9 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 
 			eg.Go(func() error {
 				var p = packet.From(make([]byte, cfg.MTU))
-				_, err := conn.Recv(ctx, p)
+				var atter = &mocker{}
+
+				err := conn.Recv(ctx, atter, p)
 				require.True(t, errors.Is(err, net.ErrClosed), err)
 				return nil
 			})
@@ -144,7 +150,9 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 
 			eg.Go(func() error {
 				var p = packet.Make(0, cfg.MTU)
-				_, err := conn.Recv(ctx, p)
+				var atter = &mocker{}
+
+				err := conn.Recv(ctx, atter, p)
 				require.True(t, errors.Is(err, net.ErrClosed), err)
 				return nil
 			})
