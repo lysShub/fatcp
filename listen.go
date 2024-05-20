@@ -106,7 +106,7 @@ func (l *listener) AcceptCtx(ctx context.Context) (Conn, error) {
 		return nil, err
 	}
 
-	var conn = &conn{}
+	var conn = &conn{a: l.a.Builtin()}
 	if err := conn.init(raw, ep, server, l.config); err != nil {
 		return nil, err
 	}

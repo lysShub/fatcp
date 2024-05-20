@@ -158,7 +158,7 @@ func (c *conn) isBuiltinFakePacket(pkt *packet.Packet) (tcp *packet.Packet) {
 	if err := c.fake.DetachRecv(pkt); err != nil {
 		return nil
 	}
-	var a = c.a.Builtin() // Decode will reset a, so a.IsBuiltin() depend on pkt data
+	var a = c.a.Builtin() // Decode will overwrite a, so a.IsBuiltin() depend on pkt data
 	if a.Decode(pkt) == nil && a.IsBuiltin() {
 		return pkt
 	}
