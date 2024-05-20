@@ -5,11 +5,11 @@ import (
 )
 
 type Attacher interface {
+	Valid() bool
+	String() string
+	Overhead() int
 	Builtin() Attacher
 	IsBuiltin() bool
-	Valid() bool
-	Overhead() int
-	String() string
 	Encode(pkt *packet.Packet) error
 	Decode(pkt *packet.Packet) error
 }

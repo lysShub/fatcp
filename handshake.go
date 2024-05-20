@@ -41,7 +41,7 @@ const (
 	closed     uint32 = 4
 )
 
-func (c *conn[A]) handshake(ctx context.Context) (err error) {
+func (c *conn) handshake(ctx context.Context) (err error) {
 	if !c.state.CompareAndSwap(initial, handshake1) {
 		c.handshakedNotify.Wait() // handshake started, wait finish
 		return nil
@@ -109,7 +109,7 @@ func (c *conn[A]) handshake(ctx context.Context) (err error) {
 	return nil
 }
 
-func (c *conn[A]) handshakeInboundService(ctx context.Context) (_ error) {
+func (c *conn) handshakeInboundService(ctx context.Context) (_ error) {
 	var pkt = packet.Make(c.config.MTU)
 
 	for {
@@ -154,11 +154,11 @@ func (c *conn[A]) handshakeInboundService(ctx context.Context) (_ error) {
 	}
 }
 
-func (c *conn[A]) isBuiltinFakePacket(pkt *packet.Packet) (tcp *packet.Packet) {
+func (c *conn) isBuiltinFakePacket(pkt *packet.Packet) (tcp *packet.Packet) {
 	if err := c.fake.DetachRecv(pkt); err != nil {
 		return nil
 	}
-	var a = *(new(A))
+	var a = c.a.Builtin() // Decode will reset a, so a.IsBuiltin() depend on pkt data
 	if a.Decode(pkt) == nil && a.IsBuiltin() {
 		return pkt
 	}

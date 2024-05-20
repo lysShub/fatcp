@@ -20,7 +20,7 @@ import (
 	"github.com/lysShub/rawsock/test"
 )
 
-type conn[A Attacher] struct {
+type conn struct {
 	config     *Config
 	raw        rawsock.RawConn
 	clientPort uint16
@@ -37,6 +37,7 @@ type conn[A Attacher] struct {
 
 	fake *faketcp.FakeTCP //
 
+	a         Attacher
 	srvCtx    context.Context
 	srvCancel context.CancelFunc
 	closeErr  errorx.CloseErr
@@ -49,7 +50,7 @@ const (
 	server role = 2
 )
 
-func (c *conn[A]) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) error {
+func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) error {
 	c.config = config
 	c.raw = raw
 	c.role = role
@@ -71,7 +72,7 @@ func (c *conn[A]) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, 
 	return nil
 }
 
-func (c *conn[A]) close(cause error) error {
+func (c *conn) close(cause error) error {
 	return c.closeErr.Close(func() (errs []error) {
 		errs = append(errs, cause)
 
@@ -99,10 +100,10 @@ func (c *conn[A]) close(cause error) error {
 	})
 }
 
-func (c *conn[A]) outboundService() error {
+func (c *conn) outboundService() error {
 	var (
 		pkt      = packet.Make(c.config.MTU)
-		builtin  = ((*new(A)).Builtin()).(A)
+		builtin  = c.a.Builtin()
 		overhead = c.Overhead()
 	)
 
@@ -129,18 +130,18 @@ func (c *conn[A]) outboundService() error {
 	}
 }
 
-func (c *conn[A]) Overhead() int { return (*new(A)).Overhead() + faketcp.Overhead }
-func (c *conn[A]) MTU() int      { return c.config.MTU }
+func (c *conn) Overhead() int { return c.a.Overhead() + faketcp.Overhead }
+func (c *conn) MTU() int      { return c.config.MTU }
 
 // BuiltinTCP get builtin tcp connect, require call c.Recv asynchronous, at the same time.
-func (c *conn[A]) BuiltinTCP(ctx context.Context) (net.Conn, error) {
+func (c *conn) BuiltinTCP(ctx context.Context) (net.Conn, error) {
 	if err := c.handshake(ctx); err != nil {
 		return nil, err
 	}
 	return c.tcp, nil
 }
 
-func (c *conn[A]) Send(ctx context.Context, atter A, payload *packet.Packet) (err error) {
+func (c *conn) Send(ctx context.Context, atter Attacher, payload *packet.Packet) (err error) {
 	if err := c.handshake(ctx); err != nil {
 		return err
 	}
@@ -157,14 +158,14 @@ func (c *conn[A]) Send(ctx context.Context, atter A, payload *packet.Packet) (er
 	return err
 }
 
-func (c *conn[A]) recv(ctx context.Context, pkt *packet.Packet) error {
+func (c *conn) recv(ctx context.Context, pkt *packet.Packet) error {
 	if c.handshakeRecvedFakePackets.pop(pkt) {
 		return nil
 	}
 	return c.raw.Read(ctx, pkt)
 }
 
-func (c *conn[A]) Recv(ctx context.Context, id A, payload *packet.Packet) (err error) {
+func (c *conn) Recv(ctx context.Context, id Attacher, payload *packet.Packet) (err error) {
 	if err := c.handshake(ctx); err != nil {
 		return err
 	}
@@ -202,7 +203,7 @@ func (c *conn[A]) Recv(ctx context.Context, id A, payload *packet.Packet) (err e
 	}
 }
 
-func (c *conn[A]) inboundBuitinPacket(tcp *packet.Packet) {
+func (c *conn) inboundBuitinPacket(tcp *packet.Packet) {
 	// if the data packet passes through the NAT gateway, on handshake
 	// step, the client port will be change automatically, after handshake, need manually
 	// change client port.
@@ -214,6 +215,6 @@ func (c *conn[A]) inboundBuitinPacket(tcp *packet.Packet) {
 	c.ep.Inbound(tcp)
 }
 
-func (c *conn[A]) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
-func (c *conn[A]) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
-func (c *conn[A]) Close() error               { return c.close(nil) }
+func (c *conn) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
+func (c *conn) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
+func (c *conn) Close() error               { return c.close(nil) }
