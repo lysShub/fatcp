@@ -24,7 +24,7 @@ type conn struct {
 	config     *Config
 	raw        rawsock.RawConn
 	clientPort uint16
-	role       role
+	role       Role
 	state      state
 	tinyCnt    int
 
@@ -43,14 +43,14 @@ type conn struct {
 	closeErr  errorx.CloseErr
 }
 
-type role uint8
+type Role uint8
 
 const (
-	client role = 1
-	server role = 2
+	client Role = 1
+	server Role = 2
 )
 
-func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) error {
+func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role Role, config *Config) error {
 	c.config = config
 	c.raw = raw
 	c.role = role
@@ -130,8 +130,12 @@ func (c *conn) outboundService() error {
 	}
 }
 
-func (c *conn) Overhead() int { return c.a.Overhead() + faketcp.Overhead }
-func (c *conn) MTU() int      { return c.config.MTU }
+func (c *conn) Overhead() int              { return c.a.Overhead() + faketcp.Overhead }
+func (c *conn) MTU() int                   { return c.config.MTU }
+func (c *conn) Role() Role                 { return c.role }
+func (c *conn) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
+func (c *conn) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
+func (c *conn) Close() error               { return c.close(nil) }
 
 // BuiltinTCP get builtin tcp connect, require call c.Recv asynchronous, at the same time.
 func (c *conn) BuiltinTCP(ctx context.Context) (net.Conn, error) {
@@ -176,6 +180,9 @@ func (c *conn) Recv(ctx context.Context, id Attacher, payload *packet.Packet) (e
 		if err != nil {
 			return err
 		}
+		if !faketcp.Is(payload.Bytes()) {
+			continue
+		}
 
 		err = c.fake.DetachRecv(payload)
 		if err != nil {
@@ -214,7 +221,3 @@ func (c *conn) inboundBuitinPacket(tcp *packet.Packet) {
 	}
 	c.ep.Inbound(tcp)
 }
-
-func (c *conn) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
-func (c *conn) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
-func (c *conn) Close() error               { return c.close(nil) }

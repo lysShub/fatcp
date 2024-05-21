@@ -27,6 +27,8 @@ github.com/lysShub/netkit v0.0.0-20240518095940-f4b1d75089ea h1:Zdh4C56o5hdZZY5x
 github.com/lysShub/netkit v0.0.0-20240518095940-f4b1d75089ea/go.mod h1:meJ+5h9/ek0ORSdEgtCx6NsvuAWQHITzkLuVDtL+2lc=
 github.com/lysShub/rawsock v0.0.0-20240518130622-a7d8187069b0 h1:EdYRfkQq9hbFciv14fE7vFSRyu0ZGNr5HsRSV1qRRZA=
 github.com/lysShub/rawsock v0.0.0-20240518130622-a7d8187069b0/go.mod h1:9cZquDwIoBvXKgvzWIdvgui1FJ6PxRP9BvO0DKM1F94=
+github.com/lysShub/rawsock v0.0.0-20240520072652-019d5ed9acce h1:JM6dpxQZ5SxqJErt+YRV1pZORxkKbOHQ01XL2tT+Wkc=
+github.com/lysShub/rawsock v0.0.0-20240520072652-019d5ed9acce/go.mod h1:gSDvIQ0AqCoAaOQ/1p5b5gbBYyfcQITcX7F2zuYJ3mA=
 github.com/lysShub/wintun-go v0.0.0-20240410130619-383598c11ea1 h1:AV6Pt7nAFy3nvbRX9M8DOZ6gFSTEmq1DUNTIq2QoqeA=
 github.com/lysShub/wintun-go v0.0.0-20240410130619-383598c11ea1/go.mod h1:BCj6kcW5G30wkjtKulTQ83QKZutWuctHTroy+ciTWpI=
 github.com/mdlayher/arp v0.0.0-20220512170110-6706a2966875 h1:ql8x//rJsHMjS+qqEag8n3i4azw1QneKh5PieH9UEbY=

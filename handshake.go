@@ -18,15 +18,16 @@ import (
 )
 
 /*
-	握手关键需要处理好边界情况；关键函数是gonet.WaitSentDataRecvByPeer。
-	流程：
-		handshake1完成后，（handshak2阶段）等待对方握手完成，期间将不会主动发送数据包。判定对方握手完成的依据是我方
-		在握手期间发送的数据包全部被对方收到--WaitSentDataRecvByPeer。
+	fatcp 中, TCP数据包分为fake和非fake, 握手完成之前, 发送的是非fake数据包, 和正常的tcp连接没有区别。
+	握手：
+		handshake1 阶段将发送和接收所有数据, 但不保证发送的数据被对方接收, 也不保证接收的数据回复了ACK;
+		handshake2 阶段等待对方完成握手, 即发送的数据被对方接收 ---	WaitSentDataRecvByPeer。此时双方
+			应收的数据包都均已收到，结束握手。
+
 		a. 对于outboundService，在handshak2完成后，发送的是fake-builtin包, 而不是原始的tcp数据包。
-		b. 对于handshakeInboundService，在handshak2完成后，才能退出。
-		c. 如果handshakeInboundService运行时收到fake包；若此时hanshake1已经完成，应该尝试decode，如果是builtin数据包
+		b. 如果handshakeInboundService运行时收到fake包；若此时hanshake1已经完成，应该尝试decode，如果是builtin数据包
 			必须inbound stack；否则应该将其暂存。
-		d. 如果Recv收到非segment包，应该忽略。
+		d. 如果Recv收到非fake包，应该忽略。
 
 		c/d 属于边界情况，一般不会有太多数据包处于这种状态。
 */
