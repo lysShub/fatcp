@@ -50,6 +50,9 @@ const (
 	server Role = 2
 )
 
+func (r Role) Client() bool { return r == client }
+func (r Role) Server() bool { return r == server }
+
 func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role Role, config *Config) error {
 	c.config = config
 	c.raw = raw
