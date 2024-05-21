@@ -32,6 +32,7 @@ var _ Listener = (*listener)(nil)
 type Conn interface {
 	MTU() int
 	Overhead() int
+	Role() Role
 	BuiltinTCP(ctx context.Context) (tcp net.Conn, err error)
 	Recv(ctx context.Context, atter Attacher, payload *packet.Packet) (err error)
 	Send(ctx context.Context, atter Attacher, payload *packet.Packet) (err error)
