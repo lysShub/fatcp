@@ -136,14 +136,14 @@ func (c *conn) handshakeInboundService(ctx context.Context) (_ error) {
 			case handshake2:
 				// try DetachRecv, if builtin should Inbound, otherwise temporary cache
 				if tcp := c.isBuiltinFakePacket(pkt.Clone()); tcp != nil {
-					c.ep.Inbound(tcp)
+					c.inboundBuitinPacket(tcp)
 				} else {
 					c.handshakeRecvedFakePackets.put(pkt)
 				}
 			case transmit:
 				// try DetachRecv, if builtin should Inbound, otherwise ignore it
 				if tcp := c.isBuiltinFakePacket(pkt.Clone()); tcp != nil {
-					c.ep.Inbound(tcp)
+					c.inboundBuitinPacket(tcp)
 				}
 				return nil
 			default:
@@ -156,6 +156,10 @@ func (c *conn) handshakeInboundService(ctx context.Context) (_ error) {
 }
 
 func (c *conn) isBuiltinFakePacket(pkt *packet.Packet) (tcp *packet.Packet) {
+	if c.state.Load() <= handshake1 {
+		return nil
+	}
+
 	if err := c.fake.DetachRecv(pkt); err != nil {
 		return nil
 	}

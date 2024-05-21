@@ -176,3 +176,7 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 	})
 
 }
+
+func Test_NAT(t *testing.T) {
+	t.Skip("todo")
+}
