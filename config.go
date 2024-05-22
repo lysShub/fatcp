@@ -19,6 +19,8 @@ type Config struct {
 	MTU int
 
 	RecvErrLimit int
+
+	BuiltinPcapFile string
 }
 
 func (c *Config) Init(laddr netip.Addr) (err error) {

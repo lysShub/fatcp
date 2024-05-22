@@ -21,12 +21,12 @@ import (
 )
 
 type conn struct {
-	config     *Config
-	raw        rawsock.RawConn
-	clientPort uint16
-	role       Role
-	state      state
-	tinyCnt    int
+	config  *Config
+	raw     rawsock.RawConn
+	natPort uint16
+	role    Role
+	state   state
+	tinyCnt int
 
 	handshakedNotify           sync.WaitGroup
 	handshakeRecvedFakePackets *heap
@@ -62,9 +62,9 @@ func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role Role, con
 
 	switch role {
 	case client:
-		c.clientPort = raw.LocalAddr().Port()
+		c.natPort = raw.LocalAddr().Port()
 	case server:
-		c.clientPort = raw.RemoteAddr().Port()
+		c.natPort = raw.RemoteAddr().Port()
 	default:
 		return errors.Errorf("unknown role %d", role)
 	}
@@ -107,7 +107,7 @@ func (c *conn) outboundService() error {
 	var (
 		pkt      = packet.Make(c.config.MTU)
 		builtin  = c.a.Builtin()
-		overhead = c.Overhead()
+		overhead = max(c.Overhead()-header.IPv4MinimumSize, 0)
 	)
 
 	for {
@@ -216,11 +216,11 @@ func (c *conn) Recv(ctx context.Context, id Attacher, payload *packet.Packet) (e
 func (c *conn) inboundBuitinPacket(tcp *packet.Packet) {
 	// if the data packet passes through the NAT gateway, on handshake
 	// step, the client port will be change automatically, after handshake, need manually
-	// change client port.
+	// change client port for builtin tcp packet.
 	if c.role == client {
-		header.TCP(tcp.Bytes()).SetDestinationPortWithChecksumUpdate(c.clientPort)
+		header.TCP(tcp.Bytes()).SetDestinationPortWithChecksumUpdate(c.natPort)
 	} else {
-		header.TCP(tcp.Bytes()).SetSourcePortWithChecksumUpdate(c.clientPort)
+		header.TCP(tcp.Bytes()).SetSourcePortWithChecksumUpdate(c.natPort)
 	}
 	c.ep.Inbound(tcp)
 }
