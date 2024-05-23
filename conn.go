@@ -213,8 +213,10 @@ func (c *conn) inboundBuitinPacket(tcp *packet.Packet) {
 	}
 	c.ep.Inbound(tcp)
 }
+
 func (c *conn) MTU() int                   { return c.config.MTU }
 func (c *conn) Role() Role                 { return c.role }
+func (c *conn) Overhead() int              { return c.fake.Overhead() + c.a.Overhead() }
 func (c *conn) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
 func (c *conn) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
 func (c *conn) Close() error               { return c.close(nil) }

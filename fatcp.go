@@ -35,6 +35,7 @@ type Conn interface {
 
 	MTU() int
 	Role() Role
+	Overhead() int
 	LocalAddr() netip.AddrPort
 	RemoteAddr() netip.AddrPort
 	Close() error

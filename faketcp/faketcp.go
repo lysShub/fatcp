@@ -141,6 +141,13 @@ func (f *FakeTCP) DetachRecv(tcp *packet.Packet) error {
 	tcp.SetHead(tcp.Head() + int(hdr.DataOffset()))
 	return nil
 }
+func (f *FakeTCP) Overhead() int {
+	if f.crypto == nil {
+		return header.IPv4MinimumSize
+	} else {
+		return header.IPv4MinimumSize + crypto.Bytes
+	}
+}
 
 // is faketcp segment: without tcp options
 func Is(tcp header.TCP) bool {
