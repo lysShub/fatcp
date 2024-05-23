@@ -38,14 +38,14 @@ func MustWrapPcap(child Ustack, file string) Ustack {
 }
 
 func (u *UstackPcapWrap) LinkEndpoint(localPort uint16, remoteAddr netip.AddrPort) (*LinkEndpoint, error) {
-	return NewLinkEndpoint(ustackNotCloseWrap{u}, localPort, remoteAddr)
+	return u.Ustack.LinkEndpoint(localPort, remoteAddr)
 }
 
 func (u *UstackPcapWrap) Inbound(ip *packet.Packet) {
 	if err := u.pcap.WriteIP(ip.Bytes()); err != nil {
 		panic(err)
 	}
-	u.Inbound(ip)
+	u.Ustack.Inbound(ip)
 }
 func (u *UstackPcapWrap) OutboundBy(ctx context.Context, dst netip.AddrPort, tcp *packet.Packet) error {
 	old := tcp.Head()
