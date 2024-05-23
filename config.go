@@ -22,7 +22,7 @@ func calcMTU[A Attacher](config *Config) int {
 	if !ok {
 		o += crypto.Bytes
 	}
-	if config.MTU-o < 0 {
+	if config.MTU <= o {
 		panic("too small mtu")
 	}
 

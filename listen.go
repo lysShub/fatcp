@@ -9,7 +9,6 @@ import (
 	"github.com/lysShub/fatcp/ustack"
 	"github.com/lysShub/fatcp/ustack/gonet"
 	"github.com/lysShub/fatcp/ustack/link"
-	utest "github.com/lysShub/fatcp/ustack/test"
 	"github.com/lysShub/rawsock"
 	"github.com/pkg/errors"
 
@@ -54,7 +53,7 @@ func NewListener[A Attacher](l rawsock.Listener, config *Config) (Listener, erro
 		return nil, li.close(err)
 	}
 	if config.BuiltinPcapFile != "" {
-		li.stack = utest.MustWrapPcap(config.BuiltinPcapFile, li.stack)
+		li.stack = ustack.MustWrapPcap(li.stack, config.BuiltinPcapFile)
 	}
 
 	if li.l, err = gonet.ListenTCP(

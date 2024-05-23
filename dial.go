@@ -7,7 +7,6 @@ import (
 
 	"github.com/lysShub/fatcp/ustack"
 	"github.com/lysShub/fatcp/ustack/link"
-	utest "github.com/lysShub/fatcp/ustack/test"
 	"github.com/lysShub/rawsock"
 	rawtcp "github.com/lysShub/rawsock/tcp"
 	"github.com/pkg/errors"
@@ -55,7 +54,7 @@ func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (*conn, error) {
 		return nil, err
 	}
 	if config.BuiltinPcapFile != "" {
-		stack = utest.MustWrapPcap(config.BuiltinPcapFile, stack)
+		stack = ustack.MustWrapPcap(stack, config.BuiltinPcapFile)
 	}
 
 	ep, err := ustack.NewLinkEndpoint(stack, raw.LocalAddr().Port(), raw.RemoteAddr())

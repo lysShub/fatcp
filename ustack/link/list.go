@@ -190,15 +190,16 @@ func (s *slice) Put(pkb *stack.PacketBuffer) (ok bool) {
 	defer s.mu.Unlock()
 
 	if len(s.s) == cap(s.s) {
-		// todo: 如果已经Put的包长时间没被读取，需要将其丢弃
+		// 如果已经Put的包长时间没被读取，需要将其丢弃
+		// todo: 优化, 写得太直接了
 		if debug.Debug() {
 			println("link endpoint buff too small")
 		}
-		return false
-	} else {
-		s.s = append(s.s, pkb.IncRef())
-		return true
+		s.get().DecRef()
 	}
+
+	s.s = append(s.s, pkb.IncRef())
+	return true
 }
 
 func (s *slice) Get(ctx context.Context) (pkb *stack.PacketBuffer) {
