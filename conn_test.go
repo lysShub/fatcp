@@ -174,7 +174,6 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 
 		eg.Wait()
 	})
-
 }
 
 func Test_NAT(t *testing.T) {

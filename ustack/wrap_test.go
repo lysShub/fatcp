@@ -84,8 +84,8 @@ func Test_WrapConn(t *testing.T) {
 	require.NoError(t, eg.Wait())
 
 	delta := filesize(t, clientPcap) - filesize(t, serverPcap)
-	require.Less(t, -4e3, delta)
-	require.Less(t, delta, 4e3)
+	require.Less(t, int(-4e3), delta)
+	require.Less(t, delta, int(4e3))
 }
 
 func filesize(t *testing.T, file string) int {
