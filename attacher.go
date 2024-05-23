@@ -7,9 +7,9 @@ import (
 type Attacher interface {
 	Valid() bool
 	String() string
-	Overhead() int
 	Builtin() Attacher
 	IsBuiltin() bool
+	Overhead() int
 	Encode(pkt *packet.Packet) error
 	Decode(pkt *packet.Packet) error
 }

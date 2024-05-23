@@ -96,7 +96,7 @@ func (f *FakeTCP) AttachSend(seg *packet.Packet) {
 	seg.Attach(hdr)
 
 	if f.crypto != nil {
-		f.sndNxt.Add(uint32(payload + f.crypto.Overhead()))
+		f.sndNxt.Add(uint32(payload + crypto.Bytes))
 		f.crypto.Encrypt(seg)
 	} else if f.pseudoSum1 != nil {
 		f.sndNxt.Add(uint32(payload))

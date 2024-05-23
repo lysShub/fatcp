@@ -6,7 +6,6 @@ import (
 	"net/netip"
 	"sync/atomic"
 
-	"github.com/lysShub/fatcp/faketcp"
 	"github.com/lysShub/fatcp/ustack"
 	"github.com/lysShub/fatcp/ustack/gonet"
 	"github.com/lysShub/fatcp/ustack/link"
@@ -50,7 +49,7 @@ func NewListener[A Attacher](l rawsock.Listener, config *Config) (Listener, erro
 	var err error
 
 	if li.stack, err = ustack.NewUstack(
-		link.NewList(64, config.MTU-li.a.Overhead()), l.Addr().Addr(),
+		link.NewList(64, calcMTU[A](config)), l.Addr().Addr(),
 	); err != nil {
 		return nil, li.close(err)
 	}
@@ -119,5 +118,4 @@ func (l *listener) AcceptCtx(ctx context.Context) (Conn, error) {
 
 func (l *listener) Addr() netip.AddrPort { return l.raw.Addr() }
 func (l *listener) MTU() int             { return l.config.MTU }
-func (l *listener) Overhead() int        { return l.a.Overhead() + faketcp.Overhead }
 func (l *listener) Close() error         { return l.close(nil) }

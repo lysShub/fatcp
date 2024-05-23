@@ -105,18 +105,14 @@ func (c *conn) close(cause error) error {
 
 func (c *conn) outboundService() error {
 	var (
-		pkt      = packet.Make(c.config.MTU)
-		builtin  = c.a.Builtin()
-		overhead = max(c.Overhead()-header.IPv4MinimumSize, 0)
+		pkt     = packet.Make(64, max(c.config.MTU, 1500))
+		builtin = c.a.Builtin()
 	)
 
 	for {
-		err := c.ep.Outbound(c.srvCtx, pkt.Sets(overhead, 0xffff))
+		err := c.ep.Outbound(c.srvCtx, pkt.Sets(64, 0xffff))
 		if err != nil {
 			return c.close(err)
-		}
-		if debug.Debug() {
-			require.GreaterOrEqual(test.T(), pkt.Head(), overhead)
 		}
 
 		if c.state.Load() == transmit {
@@ -132,13 +128,6 @@ func (c *conn) outboundService() error {
 		}
 	}
 }
-
-func (c *conn) Overhead() int              { return c.a.Overhead() + faketcp.Overhead }
-func (c *conn) MTU() int                   { return c.config.MTU }
-func (c *conn) Role() Role                 { return c.role }
-func (c *conn) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
-func (c *conn) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
-func (c *conn) Close() error               { return c.close(nil) }
 
 // BuiltinTCP get builtin tcp connect, require call c.Recv asynchronous, at the same time.
 func (c *conn) BuiltinTCP(ctx context.Context) (net.Conn, error) {
@@ -224,3 +213,8 @@ func (c *conn) inboundBuitinPacket(tcp *packet.Packet) {
 	}
 	c.ep.Inbound(tcp)
 }
+func (c *conn) MTU() int                   { return c.config.MTU }
+func (c *conn) Role() Role                 { return c.role }
+func (c *conn) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
+func (c *conn) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
+func (c *conn) Close() error               { return c.close(nil) }
