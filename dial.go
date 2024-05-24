@@ -16,12 +16,13 @@ func Dial[A Attacher](server string, config *Config) (*conn, error) {
 	return DialCtx[A](context.Background(), server, config)
 }
 
+// todo: config 改为option
 func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*conn, error) {
 	raddr, err := resolve(server, false)
 	if err != nil {
 		return nil, err
 	}
-	raw, err := rawtcp.Connect(netip.AddrPortFrom(netip.IPv4Unspecified(), 0), raddr)
+	raw, err := rawtcp.Connect(netip.AddrPortFrom(netip.IPv4Unspecified(), 0), raddr, config.RawConnOpts...)
 	if err != nil {
 		return nil, err
 	}

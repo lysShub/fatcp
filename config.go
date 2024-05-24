@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/lysShub/fatcp/crypto"
+	"github.com/lysShub/rawsock"
 )
 
 func calcMTU[A Attacher](config *Config) int {
@@ -37,6 +38,8 @@ type Config struct {
 	MTU int
 
 	RecvErrLimit int
+
+	RawConnOpts []rawsock.Option
 
 	BuiltinPcapFile string
 }

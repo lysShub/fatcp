@@ -86,7 +86,7 @@ func (l *List) outboundBy(ctx context.Context, dst netip.AddrPort, tcp *packet.P
 	} else {
 		pkb = l.list.Get(ctx)
 	}
-	if pkb.IsNil() {
+	if pkb == nil {
 		return errors.WithStack(ctx.Err())
 	}
 	defer pkb.DecRef()
@@ -183,7 +183,7 @@ var _ listIface = (*slice)(nil)
 
 func (s *slice) Put(pkb *stack.PacketBuffer) (ok bool) {
 	defer s.writeNotify.Broadcast()
-	if pkb.IsNil() {
+	if pkb == nil {
 		return false
 	}
 	s.mu.Lock()
@@ -207,7 +207,7 @@ func (s *slice) Get(ctx context.Context) (pkb *stack.PacketBuffer) {
 	s.mu.Lock()
 	pkb = s.get()
 	s.mu.Unlock()
-	if !pkb.IsNil() {
+	if pkb != nil {
 		return pkb
 	}
 
@@ -222,7 +222,7 @@ func (s *slice) Get(ctx context.Context) (pkb *stack.PacketBuffer) {
 			pkb = s.get()
 			s.mu.Unlock()
 
-			if !pkb.IsNil() {
+			if pkb != nil {
 				return pkb
 			}
 		}
@@ -233,7 +233,7 @@ func (s *slice) GetBy(ctx context.Context, dst netip.AddrPort) (pkb *stack.Packe
 	s.mu.Lock()
 	pkb = s.getBy(dst)
 	s.mu.Unlock()
-	if !pkb.IsNil() {
+	if pkb != nil {
 		return pkb
 	}
 
@@ -247,7 +247,7 @@ func (s *slice) GetBy(ctx context.Context, dst netip.AddrPort) (pkb *stack.Packe
 			pkb = s.getBy(dst)
 			s.mu.Unlock()
 
-			if !pkb.IsNil() {
+			if pkb != nil {
 				return pkb
 			}
 		}

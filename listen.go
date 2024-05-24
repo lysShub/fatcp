@@ -33,7 +33,7 @@ func Listen[A Attacher](addr string, config *Config) (Listener, error) {
 		return nil, err
 	}
 
-	rawl, err := rawtcp.Listen(laddr)
+	rawl, err := rawtcp.Listen(laddr, config.RawConnOpts...)
 	if err != nil {
 		return nil, err
 	}
