@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	github.com/lysShub/netkit v0.0.0-20240523071634-a634aa727e4f
-	github.com/lysShub/rawsock v0.0.0-20240523072032-1f20ac571cc0
+	github.com/lysShub/rawsock v0.0.0-20240524142408-86e79472066f
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sync v0.6.0
