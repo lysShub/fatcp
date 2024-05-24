@@ -109,6 +109,9 @@ func (f *FakeTCP) AttachSend(seg *packet.Packet) {
 			test.ValidTCP(test.T(), seg.Bytes(), *f.pseudoSum1)
 		}
 	}
+	if debug.Debug() {
+		require.True(test.T(), Is(seg.Bytes()))
+	}
 }
 
 // DetachRecv input a tcp packet, update ack, and return

@@ -2,6 +2,7 @@ package fatcp
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/netip"
 	"sync"
@@ -52,6 +53,16 @@ const (
 
 func (r Role) Client() bool { return r == client }
 func (r Role) Server() bool { return r == server }
+func (r Role) String() string {
+	switch r {
+	case client:
+		return "client"
+	case server:
+		return "server"
+	default:
+		return fmt.Sprintf("invalid fatcp role %d", r)
+	}
+}
 
 func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role Role, config *Config) error {
 	c.config = config
