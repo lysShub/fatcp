@@ -19,7 +19,8 @@ import (
 
 type Listener interface {
 	Accept() (Conn, error)
-	AcceptCtx(ctx context.Context) (Conn, error)
+	AcceptCtx(ctx context.Context) (
+Conn, error)
 	MTU() int
 	Addr() netip.AddrPort
 	Close() error
