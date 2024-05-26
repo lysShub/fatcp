@@ -21,16 +21,25 @@ import (
 )
 
 func Test_NotCrypto(t *testing.T) {
-
 	var (
-		caddr = netip.AddrPortFrom(test.LocIP(), 19986)
-		saddr = netip.AddrPortFrom(test.LocIP(), 8080)
-		cfg   = &Config{
-			Handshake:    &NotCrypto{},
-			MTU:          1500,
-			RecvErrLimit: 8,
+		caddr        = netip.AddrPortFrom(test.LocIP(), 19986)
+		saddr        = netip.AddrPortFrom(test.LocIP(), 8080)
+		serverConfig = &Config{
+			Handshake:       &NotCrypto{},
+			MTU:             1500,
+			RecvErrLimit:    8,
+			BuiltinPcapFile: "builtin-server.pcap",
+		}
+		clientConfig = &Config{
+			Handshake:       &NotCrypto{},
+			MTU:             1500,
+			RecvErrLimit:    8,
+			BuiltinPcapFile: "builtin-client.pcap",
 		}
 	)
+	os.Remove("builtin-server.pcap")
+	os.Remove("builtin-client.pcap")
+
 	c, s := test.NewMockRaw(
 		t, header.TCPProtocolNumber,
 		caddr, saddr,
@@ -40,7 +49,7 @@ func Test_NotCrypto(t *testing.T) {
 
 	// echo server
 	eg.Go(func() error {
-		l, err := NewListener[Mocker](test.NewMockListener(t, s), cfg)
+		l, err := NewListener[Mocker](test.NewMockListener(t, s), serverConfig)
 		require.NoError(t, err)
 		defer l.Close()
 
@@ -49,7 +58,7 @@ func Test_NotCrypto(t *testing.T) {
 		defer conn.Close()
 
 		eg.Go(func() error {
-			var p = packet.From(make([]byte, cfg.MTU))
+			var p = packet.From(make([]byte, serverConfig.MTU))
 			var atter = &mocker{}
 
 			err := conn.Recv(atter, p)
@@ -66,12 +75,12 @@ func Test_NotCrypto(t *testing.T) {
 
 	// client
 	eg.Go(func() error {
-		conn, err := NewConn[Mocker](c, cfg)
+		conn, err := NewConn[Mocker](c, clientConfig)
 		require.NoError(t, err)
 		defer conn.Close()
 
 		eg.Go(func() error {
-			var p = packet.Make(0, cfg.MTU)
+			var p = packet.Make(0, clientConfig.MTU)
 			var atter = &mocker{}
 
 			err := conn.Recv(atter, p)

@@ -584,13 +584,13 @@ func (c *TCPConn) WaitSentDataRecvByPeer(ctx context.Context) (sndnxt, rcvnxt ui
 func (c *TCPConn) Endpoint() tcpip.Endpoint { return c.ep }
 
 func (c *TCPConn) newOpError(op string, err error) error {
-	return &net.OpError{
+	return errors.WithStack(&net.OpError{
 		Op:     op,
 		Net:    "tcp",
 		Source: c.LocalAddr(),
 		Addr:   c.RemoteAddr(),
 		Err:    err,
-	}
+	})
 }
 
 func fullToTCPAddr(addr tcpip.FullAddress) *net.TCPAddr {

@@ -13,6 +13,7 @@ import (
 	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock/test"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
@@ -48,9 +49,14 @@ func (c *conn) handshake(ctx context.Context) (err error) {
 		return nil
 	}
 
-	srvCtx, cancel := context.WithCancel(ctx)
+	handshakeCtx, cancel := context.WithCancel(ctx)
+	wg, _ := errgroup.WithContext(handshakeCtx)
+	defer wg.Wait()
 	defer cancel()
-	go c.handshakeInboundService(srvCtx)
+	wg.Go(func() error {
+		c.handshakeInboundService(handshakeCtx)
+		return nil
+	})
 
 	tcp, err := c.factory.factory(ctx)
 	if err != nil {
@@ -116,47 +122,47 @@ func (c *conn) handshakeInboundService(ctx context.Context) (_ error) {
 	// stop := context.AfterFunc(ctx, func() { c.raw.SetReadDeadline(time.Now()) })
 	// defer stop()
 
-	var pkt = packet.Make(c.config.MTU)
+	var tcp = packet.Make(c.config.MTU)
 	for {
-		err := c.raw.Read(pkt.Sets(0, c.config.MTU))
+		err := c.raw.Read(tcp.Sets(0, c.config.MTU))
 		if err != nil {
 			return c.close(err)
 		}
 
 		if debug.Debug() {
-			old := pkt.Head()
-			pkt.SetHead(0)
-			test.ValidIP(test.P(), pkt.Bytes())
-			pkt.SetHead(old)
+			old := tcp.Head()
+			tcp.SetHead(0)
+			test.ValidIP(test.P(), tcp.Bytes())
+			tcp.SetHead(old)
 		}
 
-		if faketcp.Is(pkt.Bytes()) {
+		if faketcp.Is(tcp.Bytes()) {
 			switch state := c.state.Load(); state {
 			case handshake1:
 				// handshake1 state can't call c.fake, only ignore it
 			case handshake2:
 				// try DetachRecv, if builtin should Inbound, otherwise temporary cache
-				if tcp := c.isBuiltinFakePacket(pkt.Clone()); tcp != nil {
-					c.inboundBuitinPacket(tcp)
+				if tmp := c.tryDecodeBuiltinFakePacket(tcp.Clone()); tmp != nil {
+					c.inboundBuitinPacket(tmp)
 				} else {
-					c.handshakeRecvedFakePackets.put(pkt)
+					c.handshakeRecvedFakePackets.put(tcp)
 				}
 			case transmit:
 				// try DetachRecv, if builtin should Inbound, otherwise ignore it
-				if tcp := c.isBuiltinFakePacket(pkt.Clone()); tcp != nil {
-					c.inboundBuitinPacket(tcp)
+				if tmp := c.tryDecodeBuiltinFakePacket(tcp.Clone()); tmp != nil {
+					c.inboundBuitinPacket(tmp)
 				}
 				return nil
 			default:
 				return c.close(errors.Errorf("unexpect state %d", state))
 			}
 		} else {
-			c.ep.Inbound(pkt)
+			c.ep.Inbound(tcp)
 		}
 	}
 }
 
-func (c *conn) isBuiltinFakePacket(pkt *packet.Packet) (tcp *packet.Packet) {
+func (c *conn) tryDecodeBuiltinFakePacket(pkt *packet.Packet) (tcp *packet.Packet) {
 	if c.state.Load() <= handshake1 {
 		return nil
 	}
