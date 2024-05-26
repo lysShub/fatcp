@@ -10,6 +10,7 @@ import (
 
 	"github.com/lysShub/fatcp/faketcp"
 	"github.com/lysShub/fatcp/ustack"
+	"github.com/lysShub/fatcp/ustack/gonet"
 	"github.com/lysShub/netkit/errorx"
 	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock"
@@ -34,7 +35,7 @@ type conn struct {
 
 	ep      *ustack.LinkEndpoint
 	factory tcpFactory
-	tcp     net.Conn // builtin tcp conn
+	tcp     *gonet.TCPConn // builtin tcp conn
 
 	fake *faketcp.FakeTCP //
 
@@ -93,13 +94,11 @@ func (c *conn) close(cause error) error {
 		if c.tcp != nil {
 			errs = append(errs, c.tcp.Close())
 
-			if gconn, ok := c.tcp.(interface {
-				WaitSentDataRecvByPeer(context.Context) (uint32, uint32, error)
-			}); ok {
-				ctx, cancel := context.WithTimeout(c.srvCtx, time.Second*3)
-				defer cancel()
-				gconn.WaitSentDataRecvByPeer(ctx)
-			}
+			// todo: seem alway block 3s
+			// wait user-stack tcp finish close
+			ctx, cancel := context.WithTimeout(c.srvCtx, time.Second*3)
+			defer cancel()
+			c.tcp.WaitSentDataRecvByPeer(ctx)
 		}
 		if c.ep != nil {
 			errs = append(errs, c.ep.Close())

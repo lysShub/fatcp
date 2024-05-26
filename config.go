@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"net/netip"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -86,11 +85,6 @@ type Sign struct {
 }
 
 func (t *Sign) Client(ctx context.Context, conn net.Conn) (crypto.Key, error) {
-	stop := context.AfterFunc(ctx, func() {
-		conn.SetDeadline(time.Now())
-	})
-	defer stop()
-
 	key, err := t.Parser(ctx, t.Sign)
 	if err != nil {
 		return crypto.Key{}, err
@@ -110,11 +104,6 @@ func (t *Sign) Client(ctx context.Context, conn net.Conn) (crypto.Key, error) {
 }
 
 func (t *Sign) Server(ctx context.Context, conn net.Conn) (crypto.Key, error) {
-	stop := context.AfterFunc(ctx, func() {
-		conn.SetDeadline(time.Now())
-	})
-	defer stop()
-
 	var sign []byte
 	err := gob.NewDecoder(conn).Decode(&sign)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/netip"
 	"sync/atomic"
+	"time"
 
 	"github.com/lysShub/fatcp/crypto"
 	"github.com/lysShub/fatcp/faketcp"
@@ -13,7 +14,6 @@ import (
 	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock/test"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
@@ -48,69 +48,51 @@ func (c *conn) handshake(ctx context.Context) (err error) {
 		c.handshakedNotify.Wait() // handshake started, wait finish
 		return nil
 	}
-
-	handshakeCtx, cancel := context.WithCancel(ctx)
-	wg, _ := errgroup.WithContext(handshakeCtx)
-	defer wg.Wait()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5) // todo: from config
 	defer cancel()
-	wg.Go(func() error {
-		c.handshakeInboundService(handshakeCtx)
-		return nil
-	})
+	go c.handshakeInboundService(ctx)
 
-	tcp, err := c.factory.factory(ctx)
+	c.tcp, err = c.factory.factory(ctx)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err != nil {
-			tcp.Close()
-		}
-	}()
+	stop := context.AfterFunc(ctx, func() { c.tcp.SetDeadline(time.Now()) })
+	defer stop()
 
 	var key crypto.Key
 	if c.role == server {
-		if key, err = c.config.Handshake.Server(ctx, tcp); err != nil {
+		if key, err = c.config.Handshake.Server(ctx, c.tcp); err != nil {
 			return err
 		}
 	} else if c.role == client {
-		if key, err = c.config.Handshake.Client(ctx, tcp); err != nil {
+		if key, err = c.config.Handshake.Client(ctx, c.tcp); err != nil {
 			return err
 		}
 	} else {
 		return errors.Errorf("fatcp invalid role %d", c.role)
 	}
 
-	pseudoSum1 := header.PseudoHeaderChecksum(
-		header.TCPProtocolNumber,
-		tcpip.AddrFromSlice(c.raw.LocalAddr().Addr().AsSlice()),
-		tcpip.AddrFromSlice(c.raw.RemoteAddr().Addr().AsSlice()),
-		0,
-	)
-
 	var opt func(*faketcp.FakeTCP)
 	if key == (crypto.Key{}) {
-		opt = faketcp.PseudoSum1(pseudoSum1)
+		opt = faketcp.PseudoSum1(c.pseudoSum1())
 	} else {
-		cpt, err := crypto.NewTCP(key, pseudoSum1)
+		cpt, err := crypto.NewTCP(key, c.pseudoSum1())
 		if err != nil {
 			return err
 		}
 		opt = faketcp.Crypto(cpt)
-
 	}
 	c.fake = faketcp.New(c.raw.LocalAddr().Port(), c.raw.RemoteAddr().Port(), opt)
 
 	c.state.CompareAndSwap(handshake1, handshake2)
 
 	// wait before writen data be recved by peer.
-	if sndnxt, rcvnxt, err := tcp.WaitSentDataRecvByPeer(ctx); err != nil {
+	if sndnxt, rcvnxt, err := c.tcp.WaitSentDataRecvByPeer(ctx); err != nil {
 		return err
 	} else {
 		c.fake.InitNxt(sndnxt, rcvnxt)
 	}
 
-	c.tcp = tcp
 	c.state.CompareAndSwap(handshake2, transmit)
 	c.handshakedNotify.Done()
 	return nil
@@ -175,6 +157,15 @@ func (c *conn) tryDecodeBuiltinFakePacket(pkt *packet.Packet) (tcp *packet.Packe
 		return pkt
 	}
 	return nil
+}
+
+func (c *conn) pseudoSum1() uint16 {
+	return header.PseudoHeaderChecksum(
+		header.TCPProtocolNumber,
+		tcpip.AddrFromSlice(c.raw.LocalAddr().Addr().AsSlice()),
+		tcpip.AddrFromSlice(c.raw.RemoteAddr().Addr().AsSlice()),
+		0,
+	)
 }
 
 type tcpFactory interface {
