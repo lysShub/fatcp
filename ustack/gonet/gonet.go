@@ -581,6 +581,8 @@ func (c *TCPConn) WaitSentDataRecvByPeer(ctx context.Context) (sndnxt, rcvnxt ui
 	}
 }
 
+func (c *TCPConn) Endpoint() tcpip.Endpoint { return c.ep }
+
 func (c *TCPConn) newOpError(op string, err error) error {
 	return &net.OpError{
 		Op:     op,
