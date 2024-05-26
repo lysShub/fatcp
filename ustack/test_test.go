@@ -38,7 +38,7 @@ func UnicomStackAndRaw(t *testing.T, s ustack.Ustack, raw rawsock.RawConn) {
 		var pkt = packet.Make(64, s.MTU())
 
 		for {
-			err := raw.Read(pkt.SetHead(64))
+			err := raw.Read(pkt.Sets(64, 0xffff))
 			if errors.Is(err, io.EOF) {
 				return
 			}
@@ -75,7 +75,7 @@ func UnicomStackAndRawBy(t *testing.T, s ustack.Ustack, raw rawsock.RawConn, dst
 		var p = packet.Make(64, s.MTU())
 
 		for {
-			err := raw.Read(p.SetHead(64))
+			err := raw.Read(p.Sets(64, 0xffff))
 			if errors.Is(err, io.EOF) {
 				return
 			}
