@@ -28,15 +28,19 @@ func Test_NotCrypto(t *testing.T) {
 			Handshake:       &NotCrypto{},
 			MTU:             1500,
 			RecvErrLimit:    8,
-			BuiltinPcapFile: "builtin-server.pcap",
+			PcapRawConnPath: "raw-server.pcap",
+			PcapBuiltinPath: "builtin-server.pcap",
 		}
 		clientConfig = &Config{
 			Handshake:       &NotCrypto{},
 			MTU:             1500,
 			RecvErrLimit:    8,
-			BuiltinPcapFile: "builtin-client.pcap",
+			PcapRawConnPath: "raw-client.pcap",
+			PcapBuiltinPath: "builtin-client.pcap",
 		}
 	)
+	os.Remove("raw-server.pcap")
+	os.Remove("raw-client.pcap")
 	os.Remove("builtin-server.pcap")
 	os.Remove("builtin-client.pcap")
 
@@ -133,13 +137,13 @@ func Test_BuiltinPcapFile(t *testing.T) {
 			Handshake:       &NotCrypto{},
 			MTU:             1500,
 			RecvErrLimit:    8,
-			BuiltinPcapFile: clientPcap,
+			PcapBuiltinPath: clientPcap,
 		}
 		clientConfig = &Config{
 			Handshake:       &NotCrypto{},
 			MTU:             1500,
 			RecvErrLimit:    8,
-			BuiltinPcapFile: serverPcap,
+			PcapBuiltinPath: serverPcap,
 		}
 	)
 	require.NoError(t, err)

@@ -23,7 +23,8 @@ type Config struct {
 
 	RawConnOpts []rawsock.Option
 
-	BuiltinPcapFile string
+	PcapRawConnPath string
+	PcapBuiltinPath string
 }
 
 func (c *Config) init(laddr netip.Addr) (err error) {

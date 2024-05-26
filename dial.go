@@ -9,6 +9,7 @@ import (
 	"github.com/lysShub/fatcp/ustack/link"
 	"github.com/lysShub/rawsock"
 	rawtcp "github.com/lysShub/rawsock/tcp"
+	"github.com/lysShub/rawsock/test"
 	"github.com/pkg/errors"
 )
 
@@ -28,14 +29,11 @@ func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*c
 
 	conn, err := NewConn[A](raw, config)
 	if err != nil {
-		raw.Close()
-		return nil, err
+		return nil, conn.close(err)
 	}
 
 	if err = conn.handshake(ctx); err != nil {
-		raw.Close()
-		conn.Close()
-		return nil, err
+		return nil, conn.close(err)
 	}
 	return conn, nil
 }
@@ -51,17 +49,23 @@ func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (*conn, error) {
 		raw.LocalAddr().Addr(),
 	)
 	if err != nil {
-		return nil, err
+		return nil, conn.close(err)
 	}
-	if config.BuiltinPcapFile != "" {
-		stack = ustack.MustWrapPcap(stack, config.BuiltinPcapFile)
+	if config.PcapBuiltinPath != "" {
+		stack = ustack.MustWrapPcap(stack, config.PcapBuiltinPath)
 	}
 
 	ep, err := ustack.NewLinkEndpoint(stack, raw.LocalAddr().Port(), raw.RemoteAddr())
 	if err != nil {
-		return nil, err
+		return nil, conn.close(err)
 	}
 
+	if config.PcapRawConnPath != "" {
+		raw, err = test.WrapPcap(raw, config.PcapRawConnPath) // todo: move out test
+		if err != nil {
+			return nil, conn.close(err)
+		}
+	}
 	if err := conn.init(raw, ep, client, config); err != nil {
 		return nil, conn.close(err)
 	}

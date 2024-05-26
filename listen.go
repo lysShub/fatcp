@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	rawtcp "github.com/lysShub/rawsock/tcp"
+	"github.com/lysShub/rawsock/test"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
@@ -52,8 +53,8 @@ func NewListener[A Attacher](l rawsock.Listener, config *Config) (Listener, erro
 	); err != nil {
 		return nil, li.close(err)
 	}
-	if config.BuiltinPcapFile != "" {
-		li.stack = ustack.MustWrapPcap(li.stack, config.BuiltinPcapFile)
+	if config.PcapBuiltinPath != "" {
+		li.stack = ustack.MustWrapPcap(li.stack, config.PcapBuiltinPath)
 	}
 
 	if li.l, err = gonet.ListenTCP(
@@ -102,6 +103,13 @@ func (l *listener) AcceptCtx(ctx context.Context) (Conn, error) {
 		return nil, err
 	}
 
+	if l.config.PcapRawConnPath != "" {
+		raw, err = test.WrapPcap(raw, l.config.PcapRawConnPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	ep, err := l.stack.LinkEndpoint(l.Addr().Port(), raw.RemoteAddr())
 	if err != nil {
 		return nil, err
@@ -109,7 +117,7 @@ func (l *listener) AcceptCtx(ctx context.Context) (Conn, error) {
 
 	var conn = &conn{a: l.a.Builtin()}
 	if err := conn.init(raw, ep, server, l.config); err != nil {
-		return nil, err
+		return nil, conn.close(err)
 	}
 	conn.factory = &serverFactory{l: l.l, remote: conn.RemoteAddr()}
 	return conn, nil
