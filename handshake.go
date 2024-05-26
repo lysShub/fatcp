@@ -111,17 +111,15 @@ func (c *conn) handshake(ctx context.Context) (err error) {
 }
 
 func (c *conn) handshakeInboundService(ctx context.Context) (_ error) {
+	_ = ctx
 	// todo
 	// stop := context.AfterFunc(ctx, func() { c.raw.SetReadDeadline(time.Now()) })
 	// defer stop()
 
 	var pkt = packet.Make(c.config.MTU)
 	for {
-		err := c.raw.Read(pkt.SetHead(0))
+		err := c.raw.Read(pkt.Sets(0, c.config.MTU))
 		if err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return nil
-			}
 			return c.close(err)
 		}
 
