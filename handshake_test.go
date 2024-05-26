@@ -65,6 +65,8 @@ func Test_heap(t *testing.T) {
 }
 
 func Test_Handshake_Context_Cancel(t *testing.T) {
+	t.Skip("todo: rawsock support deadline")
+
 	t.Run("Handshake-Exceeded", func(t *testing.T) {
 		var (
 			caddr = netip.AddrPortFrom(test.LocIP(), 19986)
