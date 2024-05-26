@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"net"
 	"net/netip"
 	"time"
@@ -50,7 +51,10 @@ func (c *Config) init(laddr netip.Addr) (err error) {
 	return nil
 }
 
-// Handshake if return crypto.Key{} means not encrypt
+// Handshake application layer handshake and swap secret key,
+// if return crypto.Key{} means not encrypt.
+//
+// Client or Server must transport some data!!!
 type Handshake interface {
 	Client(ctx context.Context, tcp net.Conn) (crypto.Key, error)
 	Server(ctx context.Context, tcp net.Conn) (crypto.Key, error)
@@ -65,9 +69,15 @@ func (ErrOverflowMTU) Temporary() bool { return true }
 
 type NotCrypto struct{}
 
-func (h *NotCrypto) Client(context.Context, net.Conn) (_ crypto.Key, _ error) { return }
-func (h *NotCrypto) Server(context.Context, net.Conn) (_ crypto.Key, _ error) { return }
-func (h *NotCrypto) NotCrypto()                                               {}
+func (h *NotCrypto) Client(_ context.Context, tcp net.Conn) (_ crypto.Key, err error) {
+	_, err = tcp.Write([]byte("hello"))
+	return
+}
+func (h *NotCrypto) Server(_ context.Context, tcp net.Conn) (_ crypto.Key, err error) {
+	_, err = io.ReadFull(tcp, make([]byte, 5))
+	return
+}
+func (h *NotCrypto) NotCrypto() {}
 
 // Sign sign can't guarantee transport security
 type Sign struct {

@@ -143,14 +143,14 @@ func (c *conn) outboundService() error {
 // BuiltinTCP get builtin tcp connect, require call c.Recv asynchronous, at the same time.
 func (c *conn) BuiltinTCP(ctx context.Context) (net.Conn, error) {
 	if err := c.handshake(ctx); err != nil {
-		return nil, err
+		return nil, c.close(err)
 	}
 	return c.tcp, nil
 }
 
 func (c *conn) Send(atter Attacher, payload *packet.Packet) (err error) {
 	if err := c.handshake(c.srvCtx); err != nil {
-		return err
+		return c.close(err)
 	}
 
 	if debug.Debug() {
@@ -174,7 +174,7 @@ func (c *conn) recv(pkt *packet.Packet) error {
 
 func (c *conn) Recv(id Attacher, payload *packet.Packet) (err error) {
 	if err := c.handshake(c.srvCtx); err != nil {
-		return err
+		return c.close(err)
 	}
 
 	head := payload.Head()
