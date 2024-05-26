@@ -16,7 +16,6 @@ func Dial[A Attacher](server string, config *Config) (*conn, error) {
 	return DialCtx[A](context.Background(), server, config)
 }
 
-// todo: config 改为option
 func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*conn, error) {
 	raddr, err := resolve(server, false)
 	if err != nil {
@@ -42,7 +41,7 @@ func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*c
 }
 
 func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (*conn, error) {
-	if err := config.Init(raw.LocalAddr().Addr()); err != nil {
+	if err := config.init(raw.LocalAddr().Addr()); err != nil {
 		return nil, err
 	}
 	var conn = &conn{config: config, a: *(new(A))}

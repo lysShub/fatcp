@@ -25,7 +25,7 @@ func UnicomStackAndRaw(t *testing.T, s ustack.Ustack, raw rawsock.RawConn) {
 				return
 			}
 
-			err := raw.Write(context.Background(), pkt)
+			err := raw.Write(pkt)
 			require.NoError(t, err)
 
 			if debug.Debug() {
@@ -38,7 +38,7 @@ func UnicomStackAndRaw(t *testing.T, s ustack.Ustack, raw rawsock.RawConn) {
 		var pkt = packet.Make(64, s.MTU())
 
 		for {
-			err := raw.Read(context.Background(), pkt.SetHead(64))
+			err := raw.Read(pkt.SetHead(64))
 			if errors.Is(err, io.EOF) {
 				return
 			}
@@ -62,7 +62,7 @@ func UnicomStackAndRawBy(t *testing.T, s ustack.Ustack, raw rawsock.RawConn, dst
 				return
 			}
 
-			err := raw.Write(context.Background(), p)
+			err := raw.Write(p)
 			require.NoError(t, err)
 
 			if debug.Debug() {
@@ -75,7 +75,7 @@ func UnicomStackAndRawBy(t *testing.T, s ustack.Ustack, raw rawsock.RawConn, dst
 		var p = packet.Make(64, s.MTU())
 
 		for {
-			err := raw.Read(context.Background(), p.SetHead(64))
+			err := raw.Read(p.SetHead(64))
 			if errors.Is(err, io.EOF) {
 				return
 			}

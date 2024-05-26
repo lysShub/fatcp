@@ -244,7 +244,7 @@ func NewTCPConn(wq *waiter.Queue, ep tcpip.Endpoint) *TCPConn {
 	var (
 		idle     = tcpip.KeepaliveIdleOption(time.Second * 3)
 		interval = tcpip.KeepaliveIntervalOption(time.Second)
-		count    = 3
+		count    = 9
 	)
 	ep.SocketOptions().SetKeepAlive(true)
 	_ = ep.SetSockOpt(&idle)

@@ -14,24 +14,6 @@ import (
 	"github.com/lysShub/rawsock"
 )
 
-func calcMTU[A Attacher](config *Config) int {
-	// 计算因fatcp封装导致的MSS的最大变化大小, 此处计算可能的最大开销
-	var a A
-	o := a.Overhead()
-	o += 20 // faketcp
-	_, ok := config.Handshake.(interface{ NotCrypto() })
-	if !ok {
-		o += crypto.Bytes
-	}
-	if config.MTU <= o {
-		panic("too small mtu")
-	}
-
-	// todo: 可以优化, 在初始化ustack时设置真实的MTU, 然后握手完成后再动态修改ustack的mtu,
-	//      确保其outbou出的数据包再被fatcp封装后不会超出mtu
-	return config.MTU - o
-}
-
 type Config struct {
 	Handshake Handshake
 
@@ -44,7 +26,7 @@ type Config struct {
 	BuiltinPcapFile string
 }
 
-func (c *Config) Init(laddr netip.Addr) (err error) {
+func (c *Config) init(laddr netip.Addr) (err error) {
 	if c == nil {
 		panic("nil config")
 	}
@@ -134,6 +116,24 @@ func (t *Sign) Server(ctx context.Context, conn net.Conn) (crypto.Key, error) {
 	}
 
 	return t.Parser(ctx, sign)
+}
+
+func calcMTU[A Attacher](config *Config) int {
+	// 计算因fatcp封装导致的MSS的最大变化大小, 此处计算可能的最大开销
+	var a A
+	o := a.Overhead()
+	o += 20 // faketcp
+	_, ok := config.Handshake.(interface{ NotCrypto() })
+	if !ok {
+		o += crypto.Bytes
+	}
+	if config.MTU <= o {
+		panic("too small mtu")
+	}
+
+	// todo: 可以优化, 在初始化ustack时设置真实的MTU, 然后握手完成后再动态修改ustack的mtu,
+	//      确保其outbou出的数据包再被fatcp封装后不会超出mtu
+	return config.MTU - o
 }
 
 // todo: optimzie

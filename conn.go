@@ -127,12 +127,12 @@ func (c *conn) outboundService() error {
 		}
 
 		if c.state.Load() == transmit {
-			err = c.Send(c.srvCtx, builtin, pkt)
+			err = c.Send(builtin, pkt)
 			if err != nil {
 				return c.close(err)
 			}
 		} else {
-			err = c.raw.Write(context.Background(), faketcp.ToNot(pkt))
+			err = c.raw.Write(faketcp.ToNot(pkt))
 			if err != nil {
 				return c.close(err)
 			}
@@ -148,8 +148,8 @@ func (c *conn) BuiltinTCP(ctx context.Context) (net.Conn, error) {
 	return c.tcp, nil
 }
 
-func (c *conn) Send(ctx context.Context, atter Attacher, payload *packet.Packet) (err error) {
-	if err := c.handshake(ctx); err != nil {
+func (c *conn) Send(atter Attacher, payload *packet.Packet) (err error) {
+	if err := c.handshake(c.srvCtx); err != nil {
 		return err
 	}
 
@@ -161,25 +161,25 @@ func (c *conn) Send(ctx context.Context, atter Attacher, payload *packet.Packet)
 	}
 	c.fake.AttachSend(payload)
 
-	err = c.raw.Write(ctx, payload)
+	err = c.raw.Write(payload)
 	return err
 }
 
-func (c *conn) recv(ctx context.Context, pkt *packet.Packet) error {
+func (c *conn) recv(pkt *packet.Packet) error {
 	if c.handshakeRecvedFakePackets.pop(pkt) {
 		return nil
 	}
-	return c.raw.Read(ctx, pkt)
+	return c.raw.Read(pkt)
 }
 
-func (c *conn) Recv(ctx context.Context, id Attacher, payload *packet.Packet) (err error) {
-	if err := c.handshake(ctx); err != nil {
+func (c *conn) Recv(id Attacher, payload *packet.Packet) (err error) {
+	if err := c.handshake(c.srvCtx); err != nil {
 		return err
 	}
 
 	head := payload.Head()
 	for {
-		err = c.recv(ctx, payload.Sets(head, 0xffff))
+		err = c.recv(payload.Sets(head, 0xffff))
 		if err != nil {
 			return err
 		}

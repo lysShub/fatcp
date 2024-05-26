@@ -41,7 +41,7 @@ func Listen[A Attacher](addr string, config *Config) (Listener, error) {
 }
 
 func NewListener[A Attacher](l rawsock.Listener, config *Config) (Listener, error) {
-	if err := config.Init(l.Addr().Addr()); err != nil {
+	if err := config.init(l.Addr().Addr()); err != nil {
 		return nil, err
 	}
 	var li = &listener{config: config, raw: l, a: *(new(A))}

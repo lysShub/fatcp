@@ -52,7 +52,7 @@ func Test_NotCrypto(t *testing.T) {
 			var p = packet.From(make([]byte, cfg.MTU))
 			var atter = &mocker{}
 
-			err := conn.Recv(ctx, atter, p)
+			err := conn.Recv(atter, p)
 			require.True(t, errors.Is(err, net.ErrClosed), err)
 			return nil
 		})
@@ -74,7 +74,7 @@ func Test_NotCrypto(t *testing.T) {
 			var p = packet.Make(0, cfg.MTU)
 			var atter = &mocker{}
 
-			err := conn.Recv(ctx, atter, p)
+			err := conn.Recv(atter, p)
 			require.True(t, errors.Is(err, net.ErrClosed), err)
 			return nil
 		})
@@ -94,7 +94,7 @@ func Test_MTU(t *testing.T) {
 	var laddr = test.LocIP()
 
 	var cfg = &Config{}
-	err := cfg.Init(laddr)
+	err := cfg.init(laddr)
 	require.NoError(t, err)
 
 	ifs, err := net.Interfaces()
@@ -155,7 +155,7 @@ func Test_BuiltinPcapFile(t *testing.T) {
 			var p = packet.From(make([]byte, serverConfig.MTU))
 			var atter = &mocker{}
 
-			err := conn.Recv(ctx, atter, p)
+			err := conn.Recv(atter, p)
 			require.True(t, errors.Is(err, net.ErrClosed), err)
 			return nil
 		})
@@ -177,7 +177,7 @@ func Test_BuiltinPcapFile(t *testing.T) {
 			var p = packet.Make(0, clientConfig.MTU)
 			var atter = &mocker{}
 
-			err := conn.Recv(ctx, atter, p)
+			err := conn.Recv(atter, p)
 			require.True(t, errors.Is(err, net.ErrClosed), err)
 			return nil
 		})

@@ -30,8 +30,8 @@ var _ Listener = (*listener)(nil)
 // datagram conn
 type Conn interface {
 	BuiltinTCP(ctx context.Context) (tcp net.Conn, err error)
-	Recv(ctx context.Context, atter Attacher, payload *packet.Packet) (err error)
-	Send(ctx context.Context, atter Attacher, payload *packet.Packet) (err error)
+	Recv(atter Attacher, payload *packet.Packet) (err error)
+	Send(atter Attacher, payload *packet.Packet) (err error)
 
 	MTU() int
 	Role() Role
