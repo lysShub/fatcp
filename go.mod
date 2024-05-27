@@ -3,6 +3,7 @@ module github.com/lysShub/fatcp
 go 1.22.0
 
 require (
+	github.com/lysShub/fatun v0.0.0-20240527204856-84f5c38c1ee2
 	github.com/lysShub/netkit v0.0.0-20240523071634-a634aa727e4f
 	github.com/lysShub/rawsock v0.0.0-20240527161428-8849e5547531
 	github.com/pkg/errors v0.9.1
@@ -17,7 +18,7 @@ require (
 	github.com/go-ping/ping v1.1.0 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lysShub/divert-go v0.0.0-20240525230502-6f79596abd61 // indirect
 	github.com/lysShub/wintun-go v0.0.0-20240410130619-383598c11ea1 // indirect
@@ -27,3 +28,5 @@ require (
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/lysShub/fatun => D:\OneDrive\code\go\fatun

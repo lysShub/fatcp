@@ -60,11 +60,11 @@ func (c *conn) handshake(ctx context.Context) (err error) {
 	defer stop()
 
 	var key crypto.Key
-	if c.role == server {
+	if c.role.Server() {
 		if key, err = c.config.Handshake.Server(ctx, c.tcp); err != nil {
 			return err
 		}
-	} else if c.role == client {
+	} else if c.role.Client() {
 		if key, err = c.config.Handshake.Client(ctx, c.tcp); err != nil {
 			return err
 		}

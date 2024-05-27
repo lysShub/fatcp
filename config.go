@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/lysShub/fatcp/crypto"
+	fconn "github.com/lysShub/fatun/conn"
 	"github.com/lysShub/rawsock"
 )
 
@@ -118,7 +119,7 @@ func (t *Sign) Server(ctx context.Context, conn net.Conn) (crypto.Key, error) {
 	return t.Parser(ctx, sign)
 }
 
-func calcMTU[A Attacher](config *Config) int {
+func calcMTU[A fconn.Peer](config *Config) int {
 	// 计算因fatcp封装导致的MSS的最大变化大小, 此处计算可能的最大开销
 	var a A
 	o := a.Overhead()

@@ -2,7 +2,6 @@ package fatcp
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/netip"
 	"sync"
@@ -18,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 
+	fconn "github.com/lysShub/fatun/conn"
 	"github.com/lysShub/netkit/debug"
 	"github.com/lysShub/rawsock/test"
 )
@@ -26,7 +26,7 @@ type conn struct {
 	config  *Config
 	raw     rawsock.RawConn
 	natPort uint16
-	role    Role
+	role    fconn.Role
 	state   state
 	tinyCnt int
 
@@ -39,45 +39,24 @@ type conn struct {
 
 	fake *faketcp.FakeTCP //
 
-	a         Attacher
+	a         fconn.Peer
 	srvCtx    context.Context
 	srvCancel context.CancelFunc
 	closeErr  errorx.CloseErr
 }
 
-type Role uint8
-
-const (
-	client Role = 1
-	server Role = 2
-)
-
-func (r Role) Client() bool { return r == client }
-func (r Role) Server() bool { return r == server }
-func (r Role) String() string {
-	switch r {
-	case client:
-		return "client"
-	case server:
-		return "server"
-	default:
-		return fmt.Sprintf("invalid fatcp role %d", r)
-	}
-}
-
-func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role Role, config *Config) error {
+func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role fconn.Role, config *Config) error {
 	c.config = config
 	c.raw = raw
 	c.role = role
 	c.handshakeRecvedFakePackets = &heap{}
 	c.ep = ep
 
-	switch role {
-	case client:
+	if role.Client() {
 		c.natPort = raw.LocalAddr().Port()
-	case server:
+	} else if role.Server() {
 		c.natPort = raw.RemoteAddr().Port()
-	default:
+	} else {
 		return errors.Errorf("unknown role %d", role)
 	}
 	c.handshakedNotify.Add(1)
@@ -147,7 +126,7 @@ func (c *conn) BuiltinTCP(ctx context.Context) (net.Conn, error) {
 	return c.tcp, nil
 }
 
-func (c *conn) Send(atter Attacher, payload *packet.Packet) (err error) {
+func (c *conn) Send(atter fconn.Peer, payload *packet.Packet) (err error) {
 	if err := c.handshake(c.srvCtx); err != nil {
 		return c.close(err)
 	}
@@ -171,7 +150,7 @@ func (c *conn) recv(pkt *packet.Packet) error {
 	return c.raw.Read(pkt)
 }
 
-func (c *conn) Recv(id Attacher, payload *packet.Packet) (err error) {
+func (c *conn) Recv(id fconn.Peer, payload *packet.Packet) (err error) {
 	if err := c.handshake(c.srvCtx); err != nil {
 		return c.close(err)
 	}
@@ -216,7 +195,7 @@ func (c *conn) inboundBuitinPacket(tcp *packet.Packet) {
 	// if the data packet passes through the NAT gateway, on handshake
 	// step, the client port will be change automatically, after handshake, need manually
 	// change client port for builtin tcp packet.
-	if c.role == client {
+	if c.role.Client() {
 		header.TCP(tcp.Bytes()).SetDestinationPortWithChecksumUpdate(c.natPort)
 	} else {
 		header.TCP(tcp.Bytes()).SetSourcePortWithChecksumUpdate(c.natPort)
@@ -225,7 +204,7 @@ func (c *conn) inboundBuitinPacket(tcp *packet.Packet) {
 }
 
 func (c *conn) MTU() int                   { return c.config.MTU }
-func (c *conn) Role() Role                 { return c.role }
+func (c *conn) Role() fconn.Role           { return c.role }
 func (c *conn) Overhead() int              { return c.fake.Overhead() + c.a.Overhead() }
 func (c *conn) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
 func (c *conn) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }

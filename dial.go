@@ -7,17 +7,18 @@ import (
 
 	"github.com/lysShub/fatcp/ustack"
 	"github.com/lysShub/fatcp/ustack/link"
+	fconn "github.com/lysShub/fatun/conn"
 	"github.com/lysShub/rawsock"
 	rawtcp "github.com/lysShub/rawsock/tcp"
 	"github.com/lysShub/rawsock/test"
 	"github.com/pkg/errors"
 )
 
-func Dial[A Attacher](server string, config *Config) (Conn, error) {
+func Dial[A fconn.Peer](server string, config *Config) (fconn.Conn, error) {
 	return DialCtx[A](context.Background(), server, config)
 }
 
-func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (Conn, error) {
+func DialCtx[A fconn.Peer](ctx context.Context, server string, config *Config) (fconn.Conn, error) {
 	raddr, err := resolve(server, false)
 	if err != nil {
 		return nil, err
@@ -27,33 +28,33 @@ func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (Co
 		return nil, err
 	}
 
-	conn, err := newConn[A](raw, config)
+	c, err := newConn[A](raw, config)
 	if err != nil {
-		return nil, conn.close(err)
+		return nil, c.close(err)
 	}
 
-	if err = conn.handshake(ctx); err != nil {
-		return nil, conn.close(err)
+	if err = c.handshake(ctx); err != nil {
+		return nil, c.close(err)
 	}
-	return conn, nil
+	return c, nil
 }
 
-func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (Conn, error) {
+func NewConn[A fconn.Peer](raw rawsock.RawConn, config *Config) (fconn.Conn, error) {
 	return newConn[A](raw, config)
 }
 
-func newConn[A Attacher](raw rawsock.RawConn, config *Config) (*conn, error) {
+func newConn[A fconn.Peer](raw rawsock.RawConn, config *Config) (*conn, error) {
 	if err := config.init(raw.LocalAddr().Addr()); err != nil {
 		return nil, err
 	}
-	var conn = &conn{config: config, a: *(new(A))}
+	var c = &conn{config: config, a: *(new(A))}
 
 	stack, err := ustack.NewUstack(
 		link.NewList(8, calcMTU[A](config)),
 		raw.LocalAddr().Addr(),
 	)
 	if err != nil {
-		return nil, conn.close(err)
+		return nil, c.close(err)
 	}
 	if config.PcapBuiltinPath != "" {
 		stack = ustack.MustWrapPcap(stack, config.PcapBuiltinPath)
@@ -61,23 +62,23 @@ func newConn[A Attacher](raw rawsock.RawConn, config *Config) (*conn, error) {
 
 	ep, err := ustack.NewLinkEndpoint(stack, raw.LocalAddr().Port(), raw.RemoteAddr())
 	if err != nil {
-		return nil, conn.close(err)
+		return nil, c.close(err)
 	}
 
 	if config.PcapRawConnPath != "" {
 		raw, err = test.WrapPcap(raw, config.PcapRawConnPath) // todo: move out test
 		if err != nil {
-			return nil, conn.close(err)
+			return nil, c.close(err)
 		}
 	}
-	if err := conn.init(raw, ep, client, config); err != nil {
-		return nil, conn.close(err)
+	if err := c.init(raw, ep, fconn.Client, config); err != nil {
+		return nil, c.close(err)
 	}
-	conn.factory = &clientFactory{
-		local: conn.LocalAddr(), remote: conn.RemoteAddr(),
+	c.factory = &clientFactory{
+		local: c.LocalAddr(), remote: c.RemoteAddr(),
 		stack: stack,
 	}
-	return conn, nil
+	return c, nil
 }
 
 func resolve(addr string, local bool) (netip.AddrPort, error) {

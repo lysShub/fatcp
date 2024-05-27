@@ -9,6 +9,7 @@ import (
 	"github.com/lysShub/fatcp/ustack"
 	"github.com/lysShub/fatcp/ustack/gonet"
 	"github.com/lysShub/fatcp/ustack/link"
+	fconn "github.com/lysShub/fatun/conn"
 	"github.com/lysShub/rawsock"
 	"github.com/pkg/errors"
 
@@ -24,11 +25,11 @@ type listener struct {
 	stack ustack.Ustack
 	l     *gonet.TCPListener
 
-	a        Attacher
+	a        fconn.Peer
 	closeErr atomic.Pointer[error]
 }
 
-func Listen[A Attacher](addr string, config *Config) (Listener, error) {
+func Listen[A fconn.Peer](addr string, config *Config) (fconn.Listener, error) {
 	laddr, err := resolve(addr, true)
 	if err != nil {
 		return nil, err
@@ -41,11 +42,11 @@ func Listen[A Attacher](addr string, config *Config) (Listener, error) {
 	return newListener[A](rawl, config)
 }
 
-func NewListener[A Attacher](l rawsock.Listener, config *Config) (Listener, error) {
+func NewListener[A fconn.Peer](l rawsock.Listener, config *Config) (fconn.Listener, error) {
 	return newListener[A](l, config)
 }
 
-func newListener[A Attacher](l rawsock.Listener, config *Config) (*listener, error) {
+func newListener[A fconn.Peer](l rawsock.Listener, config *Config) (*listener, error) {
 	if err := config.init(l.Addr().Addr()); err != nil {
 		return nil, err
 	}
@@ -97,11 +98,11 @@ func (l *listener) close(cause error) error {
 	return *l.closeErr.Load()
 }
 
-func (l *listener) Accept() (Conn, error) {
+func (l *listener) Accept() (fconn.Conn, error) {
 	return l.AcceptCtx(context.Background())
 }
 
-func (l *listener) AcceptCtx(ctx context.Context) (Conn, error) {
+func (l *listener) AcceptCtx(ctx context.Context) (fconn.Conn, error) {
 	raw, err := l.raw.Accept() // todo: raw support context
 	if err != nil {
 		return nil, err
@@ -119,12 +120,12 @@ func (l *listener) AcceptCtx(ctx context.Context) (Conn, error) {
 		return nil, err
 	}
 
-	var conn = &conn{a: l.a.Builtin()}
-	if err := conn.init(raw, ep, server, l.config); err != nil {
-		return nil, conn.close(err)
+	var c = &conn{a: l.a.Builtin()}
+	if err := c.init(raw, ep, fconn.Server, l.config); err != nil {
+		return nil, c.close(err)
 	}
-	conn.factory = &serverFactory{l: l.l, remote: conn.RemoteAddr()}
-	return conn, nil
+	c.factory = &serverFactory{l: l.l, remote: c.RemoteAddr()}
+	return c, nil
 }
 
 func (l *listener) Addr() netip.AddrPort { return l.raw.Addr() }
