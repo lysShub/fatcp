@@ -104,31 +104,6 @@ func Test_NotCrypto(t *testing.T) {
 	eg.Wait()
 }
 
-func Test_MTU(t *testing.T) {
-	var laddr = test.LocIP()
-
-	var cfg = &fatcp.Config{}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	fatcp.DialCtx[Mocker](ctx, "8.8.8.8:123", cfg)
-
-	ifs, err := net.Interfaces()
-	require.NoError(t, err)
-	for _, ifi := range ifs {
-		addrs, err := ifi.Addrs()
-		require.NoError(t, err)
-		for _, addr := range addrs {
-			ip, ok := addr.(*net.IPNet)
-			if ok && ip.IP.To4() != nil && netip.AddrFrom4([4]byte(ip.IP.To4())) == laddr {
-				require.Equal(t, ifi.MTU, cfg.MTU)
-				return
-			}
-		}
-	}
-	t.Fatal("not found default nic")
-}
-
 func Test_BuiltinPcapFile(t *testing.T) {
 	var (
 		caddr        = netip.AddrPortFrom(test.LocIP(), 19986)

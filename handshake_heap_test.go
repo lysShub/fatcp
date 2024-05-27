@@ -1,11 +1,14 @@
 package fatcp
 
 import (
+	"net"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"testing"
 
 	"github.com/lysShub/netkit/packet"
+	"github.com/lysShub/rawsock/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,4 +55,27 @@ func Test_heap(t *testing.T) {
 		puts(h, n)
 		pops(h, n)
 	}
+}
+
+func Test_MTU(t *testing.T) {
+	var laddr = test.LocIP()
+
+	var cfg = &Config{}
+
+	require.NoError(t, cfg.init(test.LocIP()))
+
+	ifs, err := net.Interfaces()
+	require.NoError(t, err)
+	for _, ifi := range ifs {
+		addrs, err := ifi.Addrs()
+		require.NoError(t, err)
+		for _, addr := range addrs {
+			ip, ok := addr.(*net.IPNet)
+			if ok && ip.IP.To4() != nil && netip.AddrFrom4([4]byte(ip.IP.To4())) == laddr {
+				require.Equal(t, ifi.MTU, cfg.MTU)
+				return
+			}
+		}
+	}
+	t.Fatal("not found default nic")
 }
