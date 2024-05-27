@@ -13,11 +13,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Dial[A Attacher](server string, config *Config) (*conn, error) {
+func Dial[A Attacher](server string, config *Config) (Conn, error) {
 	return DialCtx[A](context.Background(), server, config)
 }
 
-func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*conn, error) {
+func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (Conn, error) {
 	raddr, err := resolve(server, false)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*c
 		return nil, err
 	}
 
-	conn, err := NewConn[A](raw, config)
+	conn, err := newConn[A](raw, config)
 	if err != nil {
 		return nil, conn.close(err)
 	}
@@ -38,7 +38,11 @@ func DialCtx[A Attacher](ctx context.Context, server string, config *Config) (*c
 	return conn, nil
 }
 
-func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (*conn, error) {
+func NewConn[A Attacher](raw rawsock.RawConn, config *Config) (Conn, error) {
+	return newConn[A](raw, config)
+}
+
+func newConn[A Attacher](raw rawsock.RawConn, config *Config) (*conn, error) {
 	if err := config.init(raw.LocalAddr().Addr()); err != nil {
 		return nil, err
 	}

@@ -1,8 +1,9 @@
-package fatcp
+package fatcp_test
 
 import (
 	"errors"
 
+	"github.com/lysShub/fatcp"
 	"github.com/lysShub/netkit/packet"
 )
 
@@ -13,13 +14,13 @@ type mocker struct {
 	builtin bool
 }
 
-var _ Attacher = &mocker{}
+var _ fatcp.Attacher = &mocker{}
 
-func (m *mocker) Builtin() Attacher { return &mocker{valid: true, builtin: true} }
-func (m *mocker) IsBuiltin() bool   { return m.builtin }
-func (m *mocker) Valid() bool       { return m.valid }
-func (m *mocker) Overhead() int     { return 1 }
-func (m *mocker) String() string    { return "mocker" }
+func (m *mocker) Builtin() fatcp.Attacher { return &mocker{valid: true, builtin: true} }
+func (m *mocker) IsBuiltin() bool         { return m.builtin }
+func (m *mocker) Valid() bool             { return m.valid }
+func (m *mocker) Overhead() int           { return 1 }
+func (m *mocker) String() string          { return "mocker" }
 func (m *mocker) Encode(pkt *packet.Packet) error {
 	if m.builtin {
 		pkt.Attach([]byte{1})

@@ -1,1 +1,1 @@
-package fatcp
+package fatcp_test

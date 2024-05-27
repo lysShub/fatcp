@@ -1,4 +1,4 @@
-package fatcp
+package fatcp_test
 
 import (
 	"context"
@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lysShub/fatcp"
 	"github.com/lysShub/fatcp/crypto"
+	"github.com/lysShub/fatcp/pcap"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -19,7 +21,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
-var sign = &Sign{
+var sign = &fatcp.Sign{
 	Sign: []byte("0123456789abcdef"),
 	Parser: func(ctx context.Context, sign []byte) (crypto.Key, error) {
 		if string(sign) == "0123456789abcdef" {
@@ -34,7 +36,7 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 	var (
 		caddr = netip.AddrPortFrom(test.LocIP(), 19986)
 		saddr = netip.AddrPortFrom(test.LocIP(), 8080)
-		cfg   = &Config{
+		cfg   = &fatcp.Config{
 			Handshake:    sign,
 			MTU:          1500,
 			RecvErrLimit: 8,
@@ -48,9 +50,11 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 
 	// echo server
 	eg.Go(func() error {
-		l, err := NewListener[Mocker](test.NewMockListener(t, s), cfg)
+		l, err := fatcp.NewListener[Mocker](test.NewMockListener(t, s), cfg)
 		require.NoError(t, err)
 		defer l.Close()
+
+		l = pcap.WrapListener(l, "server-segments.pcap")
 
 		conn, err := l.Accept()
 		require.NoError(t, err)
@@ -74,7 +78,7 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 
 	// client
 	eg.Go(func() error {
-		conn, err := NewConn[Mocker](c, cfg)
+		conn, err := fatcp.NewConn[Mocker](c, cfg)
 		require.NoError(t, err)
 		defer conn.Close()
 
@@ -103,7 +107,7 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 	var (
 		caddr = netip.AddrPortFrom(test.LocIP(), 19986)
 		saddr = netip.AddrPortFrom(test.LocIP(), 8080)
-		cfg   = &Config{
+		cfg   = &fatcp.Config{
 			Handshake:    sign,
 			MTU:          1500,
 			RecvErrLimit: 8,
@@ -120,7 +124,7 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 		// echo server
 		eg.Go(func() error {
 			defer s.Close()
-			l, err := NewListener[Mocker](test.NewMockListener(t, s), cfg)
+			l, err := fatcp.NewListener[Mocker](test.NewMockListener(t, s), cfg)
 			require.NoError(t, err)
 
 			conn, err := l.Accept()
@@ -144,7 +148,7 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 
 		// client
 		eg.Go(func() error {
-			conn, err := NewConn[Mocker](c, cfg)
+			conn, err := fatcp.NewConn[Mocker](c, cfg)
 			require.NoError(t, err)
 			defer conn.Close()
 

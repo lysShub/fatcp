@@ -1,4 +1,4 @@
-package fatcp
+package fatcp_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lysShub/fatcp"
 	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock/test"
 	"github.com/pkg/errors"
@@ -24,15 +25,15 @@ func Test_NotCrypto(t *testing.T) {
 	var (
 		caddr        = netip.AddrPortFrom(test.LocIP(), 19986)
 		saddr        = netip.AddrPortFrom(test.LocIP(), 8080)
-		serverConfig = &Config{
-			Handshake:       &NotCrypto{},
+		serverConfig = &fatcp.Config{
+			Handshake:       &fatcp.NotCrypto{},
 			MTU:             1500,
 			RecvErrLimit:    8,
 			PcapRawConnPath: "raw-server.pcap",
 			PcapBuiltinPath: "builtin-server.pcap",
 		}
-		clientConfig = &Config{
-			Handshake:       &NotCrypto{},
+		clientConfig = &fatcp.Config{
+			Handshake:       &fatcp.NotCrypto{},
 			MTU:             1500,
 			RecvErrLimit:    8,
 			PcapRawConnPath: "raw-client.pcap",
@@ -53,7 +54,7 @@ func Test_NotCrypto(t *testing.T) {
 
 	// echo server
 	eg.Go(func() error {
-		l, err := NewListener[Mocker](test.NewMockListener(t, s), serverConfig)
+		l, err := fatcp.NewListener[Mocker](test.NewMockListener(t, s), serverConfig)
 		require.NoError(t, err)
 		defer l.Close()
 
@@ -79,7 +80,7 @@ func Test_NotCrypto(t *testing.T) {
 
 	// client
 	eg.Go(func() error {
-		conn, err := NewConn[Mocker](c, clientConfig)
+		conn, err := fatcp.NewConn[Mocker](c, clientConfig)
 		require.NoError(t, err)
 		defer conn.Close()
 
@@ -106,9 +107,11 @@ func Test_NotCrypto(t *testing.T) {
 func Test_MTU(t *testing.T) {
 	var laddr = test.LocIP()
 
-	var cfg = &Config{}
-	err := cfg.init(laddr)
-	require.NoError(t, err)
+	var cfg = &fatcp.Config{}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	fatcp.DialCtx[Mocker](ctx, "8.8.8.8:123", cfg)
 
 	ifs, err := net.Interfaces()
 	require.NoError(t, err)
@@ -133,14 +136,14 @@ func Test_BuiltinPcapFile(t *testing.T) {
 		tmp, err     = os.MkdirTemp("", fmt.Sprintf("%d", time.Now().Unix()))
 		clientPcap   = filepath.Join(tmp, "client.pcap")
 		serverPcap   = filepath.Join(tmp, "server.pcap")
-		serverConfig = &Config{
-			Handshake:       &NotCrypto{},
+		serverConfig = &fatcp.Config{
+			Handshake:       &fatcp.NotCrypto{},
 			MTU:             1500,
 			RecvErrLimit:    8,
 			PcapBuiltinPath: clientPcap,
 		}
-		clientConfig = &Config{
-			Handshake:       &NotCrypto{},
+		clientConfig = &fatcp.Config{
+			Handshake:       &fatcp.NotCrypto{},
 			MTU:             1500,
 			RecvErrLimit:    8,
 			PcapBuiltinPath: serverPcap,
@@ -156,7 +159,7 @@ func Test_BuiltinPcapFile(t *testing.T) {
 
 	// echo server
 	eg.Go(func() error {
-		l, err := NewListener[Mocker](test.NewMockListener(t, s), serverConfig)
+		l, err := fatcp.NewListener[Mocker](test.NewMockListener(t, s), serverConfig)
 		require.NoError(t, err)
 		defer l.Close()
 
@@ -182,7 +185,7 @@ func Test_BuiltinPcapFile(t *testing.T) {
 
 	// client
 	eg.Go(func() error {
-		conn, err := NewConn[Mocker](c, clientConfig)
+		conn, err := fatcp.NewConn[Mocker](c, clientConfig)
 		require.NoError(t, err)
 		defer conn.Close()
 

@@ -38,10 +38,14 @@ func Listen[A Attacher](addr string, config *Config) (Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewListener[A](rawl, config)
+	return newListener[A](rawl, config)
 }
 
 func NewListener[A Attacher](l rawsock.Listener, config *Config) (Listener, error) {
+	return newListener[A](l, config)
+}
+
+func newListener[A Attacher](l rawsock.Listener, config *Config) (*listener, error) {
 	if err := config.init(l.Addr().Addr()); err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package fatcp
+package fatcp_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lysShub/fatcp"
 	"github.com/lysShub/fatcp/crypto"
 	"github.com/lysShub/rawsock/test"
 	"github.com/pkg/errors"
@@ -23,8 +24,8 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 		var (
 			caddr = netip.AddrPortFrom(test.LocIP(), 19986)
 			saddr = netip.AddrPortFrom(test.LocIP(), 8080)
-			cfg   = &Config{
-				Handshake: &Sign{
+			cfg   = &fatcp.Config{
+				Handshake: &fatcp.Sign{
 					Sign: func() []byte {
 						sign := make([]byte, 1024*1024*8)
 						rand.New(rand.NewSource(0)).Read(sign) // avoid gob compress
@@ -48,7 +49,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 
 		// server
 		eg.Go(func() error {
-			l, err := NewListener[Mocker](test.NewMockListener(t, s), cfg)
+			l, err := fatcp.NewListener[Mocker](test.NewMockListener(t, s), cfg)
 			require.NoError(t, err)
 			defer l.Close()
 
@@ -61,7 +62,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 
 		// client
 		eg.Go(func() error {
-			conn, err := NewConn[Mocker](c, cfg)
+			conn, err := fatcp.NewConn[Mocker](c, cfg)
 			require.NoError(t, err)
 			_, err = conn.BuiltinTCP(ctx)
 			require.True(t, errors.Is(err, os.ErrDeadlineExceeded), err)
@@ -75,8 +76,8 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 		var (
 			caddr = netip.AddrPortFrom(test.LocIP(), 19986)
 			saddr = netip.AddrPortFrom(test.LocIP(), 8080)
-			cfg   = &Config{
-				Handshake: &Sign{
+			cfg   = &fatcp.Config{
+				Handshake: &fatcp.Sign{
 					Sign: func() []byte {
 						sign := make([]byte, 1024*1024*8)
 						rand.New(rand.NewSource(0)).Read(sign) // avoid gob compress
@@ -98,7 +99,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 		eg, ctx := errgroup.WithContext(ctx)
 
 		eg.Go(func() error {
-			l, err := NewListener[Mocker](test.NewMockListener(t, s), cfg)
+			l, err := fatcp.NewListener[Mocker](test.NewMockListener(t, s), cfg)
 			require.NoError(t, err)
 			defer l.Close()
 
@@ -111,7 +112,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 
 		// client
 		eg.Go(func() error {
-			conn, err := NewConn[Mocker](c, cfg)
+			conn, err := fatcp.NewConn[Mocker](c, cfg)
 			require.NoError(t, err)
 			_, err = conn.BuiltinTCP(ctx)
 
