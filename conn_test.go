@@ -11,7 +11,6 @@ import (
 
 	"github.com/lysShub/fatcp"
 	"github.com/lysShub/fatcp/crypto"
-	"github.com/lysShub/fatcp/pcap"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -53,8 +52,6 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 		l, err := fatcp.NewListener[Mocker](test.NewMockListener(t, s), cfg)
 		require.NoError(t, err)
 		defer l.Close()
-
-		l = pcap.WrapListener(l, "server-segments.pcap")
 
 		conn, err := l.Accept()
 		require.NoError(t, err)
