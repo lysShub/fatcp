@@ -3,13 +3,12 @@ module github.com/lysShub/fatcp
 go 1.22.0
 
 require (
-	github.com/lysShub/fatun v0.0.0-20240527204856-84f5c38c1ee2
+	github.com/lysShub/fatun v0.0.0-20240527214549-f76d203b3d7b
 	github.com/lysShub/netkit v0.0.0-20240523071634-a634aa727e4f
 	github.com/lysShub/rawsock v0.0.0-20240527161428-8849e5547531
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sync v0.6.0
-	golang.org/x/sys v0.19.0
 	gvisor.dev/gvisor v0.0.0-20240521174809-5eedbf551134
 )
 
@@ -24,9 +23,8 @@ require (
 	github.com/lysShub/wintun-go v0.0.0-20240410130619-383598c11ea1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/lysShub/fatun => D:\OneDrive\code\go\fatun
