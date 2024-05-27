@@ -6,10 +6,10 @@ import (
 	"net/netip"
 	"sync/atomic"
 
-	"github.com/lysShub/fatcp/ustack"
-	"github.com/lysShub/fatcp/ustack/gonet"
-	"github.com/lysShub/fatcp/ustack/link"
 	fconn "github.com/lysShub/fatun/conn"
+	"github.com/lysShub/fatun/ustack"
+	"github.com/lysShub/fatun/ustack/gonet"
+	"github.com/lysShub/fatun/ustack/link"
 	"github.com/lysShub/rawsock"
 	"github.com/pkg/errors"
 

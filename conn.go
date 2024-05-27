@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/lysShub/fatcp/faketcp"
-	"github.com/lysShub/fatcp/ustack"
-	"github.com/lysShub/fatcp/ustack/gonet"
+	"github.com/lysShub/fatun/ustack"
+	"github.com/lysShub/fatun/ustack/gonet"
 	"github.com/lysShub/netkit/errorx"
 	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock"

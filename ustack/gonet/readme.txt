@@ -1,1 +1,0 @@
-copy from: https://github.com/google/gvisor/blob/go/pkg/tcpip/adapters/gonet/gonet.go

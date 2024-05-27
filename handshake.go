@@ -8,8 +8,8 @@ import (
 
 	"github.com/lysShub/fatcp/crypto"
 	"github.com/lysShub/fatcp/faketcp"
-	"github.com/lysShub/fatcp/ustack"
-	"github.com/lysShub/fatcp/ustack/gonet"
+	"github.com/lysShub/fatun/ustack"
+	"github.com/lysShub/fatun/ustack/gonet"
 	"github.com/lysShub/netkit/debug"
 	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock/test"
