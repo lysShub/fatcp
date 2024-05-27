@@ -244,7 +244,7 @@ func NewTCPConn(wq *waiter.Queue, ep tcpip.Endpoint) *TCPConn {
 	var (
 		idle     = tcpip.KeepaliveIdleOption(time.Second * 3)
 		interval = tcpip.KeepaliveIntervalOption(time.Second)
-		count    = 3
+		count    = 9
 	)
 	ep.SocketOptions().SetKeepAlive(true)
 	_ = ep.SetSockOpt(&idle)
@@ -581,14 +581,16 @@ func (c *TCPConn) WaitSentDataRecvByPeer(ctx context.Context) (sndnxt, rcvnxt ui
 	}
 }
 
+func (c *TCPConn) Endpoint() tcpip.Endpoint { return c.ep }
+
 func (c *TCPConn) newOpError(op string, err error) error {
-	return &net.OpError{
+	return errors.WithStack(&net.OpError{
 		Op:     op,
 		Net:    "tcp",
 		Source: c.LocalAddr(),
 		Addr:   c.RemoteAddr(),
 		Err:    err,
-	}
+	})
 }
 
 func fullToTCPAddr(addr tcpip.FullAddress) *net.TCPAddr {

@@ -86,7 +86,7 @@ func (l *List) outboundBy(ctx context.Context, dst netip.AddrPort, tcp *packet.P
 	} else {
 		pkb = l.list.Get(ctx)
 	}
-	if pkb.IsNil() {
+	if pkb == nil {
 		return errors.WithStack(ctx.Err())
 	}
 	defer pkb.DecRef()
@@ -183,27 +183,31 @@ var _ listIface = (*slice)(nil)
 
 func (s *slice) Put(pkb *stack.PacketBuffer) (ok bool) {
 	defer s.writeNotify.Broadcast()
-	if pkb.IsNil() {
+	if pkb == nil {
 		return false
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if len(s.s) == cap(s.s) {
-		// todo: 如果已经Put的包长时间没被读取，需要将其丢弃
+		// if the cached data packet is not read for a long time, it needs to be discarded
+		// todo: add ttl
+		d := s.get()
+		d.DecRef()
 		if debug.Debug() {
-			println("link endpoint buff too small")
+			println("link endpoint buff too small", d.ReadRefs())
 		}
-		return false
-	} else {
-		s.s = append(s.s, pkb.IncRef())
-		return true
 	}
+
+	s.s = append(s.s, pkb.IncRef())
+	return true
 }
 
 func (s *slice) Get(ctx context.Context) (pkb *stack.PacketBuffer) {
+	s.mu.Lock()
 	pkb = s.get()
-	if !pkb.IsNil() {
+	s.mu.Unlock()
+	if pkb != nil {
 		return pkb
 	}
 
@@ -215,10 +219,10 @@ func (s *slice) Get(ctx context.Context) (pkb *stack.PacketBuffer) {
 		default:
 			s.mu.Lock()
 			s.writeNotify.Wait()
+			pkb = s.get()
 			s.mu.Unlock()
 
-			pkb = s.get()
-			if !pkb.IsNil() {
+			if pkb != nil {
 				return pkb
 			}
 		}
@@ -226,8 +230,10 @@ func (s *slice) Get(ctx context.Context) (pkb *stack.PacketBuffer) {
 }
 
 func (s *slice) GetBy(ctx context.Context, dst netip.AddrPort) (pkb *stack.PacketBuffer) {
+	s.mu.Lock()
 	pkb = s.getBy(dst)
-	if !pkb.IsNil() {
+	s.mu.Unlock()
+	if pkb != nil {
 		return pkb
 	}
 
@@ -238,10 +244,10 @@ func (s *slice) GetBy(ctx context.Context, dst netip.AddrPort) (pkb *stack.Packe
 		default:
 			s.mu.Lock()
 			s.writeNotify.Wait()
+			pkb = s.getBy(dst)
 			s.mu.Unlock()
 
-			pkb = s.getBy(dst)
-			if !pkb.IsNil() {
+			if pkb != nil {
 				return pkb
 			}
 		}
@@ -249,9 +255,6 @@ func (s *slice) GetBy(ctx context.Context, dst netip.AddrPort) (pkb *stack.Packe
 }
 
 func (s *slice) get() (pkb *stack.PacketBuffer) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if len(s.s) > 0 {
 		pkb = s.s[0]
 		n := copy(s.s, s.s[1:])
@@ -263,9 +266,6 @@ func (s *slice) get() (pkb *stack.PacketBuffer) {
 }
 
 func (s *slice) getBy(dst netip.AddrPort) (pkb *stack.PacketBuffer) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	for i, e := range s.s {
 		if match(e, dst) {
 			pkb = s.s[i]

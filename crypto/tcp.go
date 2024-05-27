@@ -43,8 +43,6 @@ func NewTCP(key [Bytes]byte, pseudoSum1 uint16) (*TCP, error) {
 	return g, nil
 }
 
-func (g *TCP) Overhead() int { return g.c.Overhead() }
-
 func (g *TCP) Encrypt(tcp *packet.Packet) {
 	hdr := header.TCP(tcp.AppendN(Bytes).ReduceN(Bytes).Bytes())
 

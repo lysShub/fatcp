@@ -5,6 +5,8 @@ import (
 	"io"
 	"math/rand"
 	"net/netip"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,10 +16,7 @@ import (
 	"github.com/lysShub/fatcp/ustack"
 	"github.com/lysShub/fatcp/ustack/gonet"
 	"github.com/lysShub/fatcp/ustack/link"
-	"github.com/lysShub/rawsock"
 
-	"github.com/lysShub/netkit/debug"
-	"github.com/lysShub/netkit/packet"
 	"github.com/lysShub/rawsock/test"
 	"github.com/stretchr/testify/require"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -216,76 +215,37 @@ func Test_Conn_Clients(t *testing.T) {
 	require.NoError(t, eg.Wait())
 }
 
-func UnicomStackAndRaw(t *testing.T, s ustack.Ustack, raw rawsock.RawConn) {
-	go func() {
-		var pkt = packet.Make(64, s.MTU())
+func Test_Ustack_LinkEndpoint(t *testing.T) {
+	// test ustack.LinkEndpoint().Close() will not close parent ustack
+	var (
+		caddr = netip.AddrPortFrom(test.LocIP(), test.RandPort())
+	)
 
-		for {
-			s.Outbound(context.Background(), pkt.SetHead(64))
-			if pkt.Data() == 0 {
-				return
-			}
+	t.Run("std", func(t *testing.T) {
+		st, err := ustack.NewUstack(link.NewList(16, 1536), caddr.Addr())
+		require.NoError(t, err)
+		st = closePanic{st}
 
-			err := raw.Write(context.Background(), pkt)
-			require.NoError(t, err)
+		lep, err := st.LinkEndpoint(123, netip.AddrPortFrom(netip.IPv4Unspecified(), 5678))
+		require.NoError(t, err)
+		require.NoError(t, lep.Close())
+	})
 
-			if debug.Debug() {
-				pkt.SetHead(64)
-				test.ValidIP(t, pkt.Bytes())
-			}
-		}
-	}()
-	go func() {
-		var pkt = packet.Make(64, s.MTU())
+	t.Run("pcap", func(t *testing.T) {
+		st, err := ustack.NewUstack(link.NewList(16, 1536), caddr.Addr())
+		require.NoError(t, err)
+		st = ustack.MustWrapPcap(st, filepath.Join(os.TempDir(), "test.pcap"))
+		st = closePanic{st}
 
-		for {
-			err := raw.Read(context.Background(), pkt.SetHead(64))
-			if errors.Is(err, io.EOF) {
-				return
-			}
-			require.NoError(t, err)
+		lep, err := st.LinkEndpoint(123, netip.AddrPortFrom(netip.IPv4Unspecified(), 5678))
+		require.NoError(t, err)
+		require.NoError(t, lep.Close())
+	})
 
-			pkt.SetHead(64)
-			test.ValidIP(t, pkt.Bytes())
-
-			s.Inbound(pkt)
-		}
-	}()
 }
 
-func UnicomStackAndRawBy(t *testing.T, s ustack.Ustack, raw rawsock.RawConn, dst netip.AddrPort) {
-	go func() {
-		var p = packet.Make(64, s.MTU())
-
-		for {
-			s.OutboundBy(context.Background(), dst, p.SetHead(64))
-			if p.Data() == 0 {
-				return
-			}
-
-			err := raw.Write(context.Background(), p)
-			require.NoError(t, err)
-
-			if debug.Debug() {
-				p.SetHead(64)
-				test.ValidIP(t, p.Bytes())
-			}
-		}
-	}()
-	go func() {
-		var p = packet.Make(64, s.MTU())
-
-		for {
-			err := raw.Read(context.Background(), p.SetHead(64))
-			if errors.Is(err, io.EOF) {
-				return
-			}
-			require.NoError(t, err)
-
-			p.SetHead(64)
-			test.ValidIP(t, p.Bytes())
-
-			s.Inbound(p)
-		}
-	}()
+type closePanic struct {
+	ustack.Ustack
 }
+
+func (closePanic) Close() error { panic("") }

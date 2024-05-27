@@ -96,7 +96,7 @@ func (f *FakeTCP) AttachSend(seg *packet.Packet) {
 	seg.Attach(hdr)
 
 	if f.crypto != nil {
-		f.sndNxt.Add(uint32(payload + f.crypto.Overhead()))
+		f.sndNxt.Add(uint32(payload + crypto.Bytes))
 		f.crypto.Encrypt(seg)
 	} else if f.pseudoSum1 != nil {
 		f.sndNxt.Add(uint32(payload))
@@ -108,6 +108,9 @@ func (f *FakeTCP) AttachSend(seg *packet.Packet) {
 		if debug.Debug() {
 			test.ValidTCP(test.T(), seg.Bytes(), *f.pseudoSum1)
 		}
+	}
+	if debug.Debug() {
+		require.True(test.T(), Is(seg.Bytes()))
 	}
 }
 
@@ -140,6 +143,13 @@ func (f *FakeTCP) DetachRecv(tcp *packet.Packet) error {
 	// remove tcp header
 	tcp.SetHead(tcp.Head() + int(hdr.DataOffset()))
 	return nil
+}
+func (f *FakeTCP) Overhead() int {
+	if f.crypto == nil {
+		return header.IPv4MinimumSize
+	} else {
+		return header.IPv4MinimumSize + crypto.Bytes
+	}
 }
 
 // is faketcp segment: without tcp options

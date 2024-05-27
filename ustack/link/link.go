@@ -25,7 +25,7 @@ type Link interface {
 }
 
 func match(pkb *stack.PacketBuffer, dst netip.AddrPort) (match bool) {
-	if pkb.IsNil() {
+	if pkb == nil {
 		return false
 	}
 

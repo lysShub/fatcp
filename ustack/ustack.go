@@ -115,10 +115,6 @@ func (u *ustack) LinkEndpoint(localPort uint16, remoteAddr netip.AddrPort) (*Lin
 	return NewLinkEndpoint(ustackNotCloseWrap{u}, localPort, remoteAddr)
 }
 
-type ustackNotCloseWrap struct{ *ustack }
-
-func (ustackNotCloseWrap) Close() error { return nil }
-
 func (u *ustack) Inbound(ip *packet.Packet) { u.link.Inbound(ip) }
 
 // OutboundBy only use by server, read stack outbound tcp packet

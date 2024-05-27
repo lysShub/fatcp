@@ -13,45 +13,53 @@ import (
 	"github.com/pkg/errors"
 
 	rawtcp "github.com/lysShub/rawsock/tcp"
+	"github.com/lysShub/rawsock/test"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
-type Listener[A Attacher] struct {
+type listener struct {
 	config *Config
 	raw    rawsock.Listener
 
 	stack ustack.Ustack
 	l     *gonet.TCPListener
 
+	a        Attacher
 	closeErr atomic.Pointer[error]
 }
 
-func Listen[A Attacher](addr string, config *Config) (*Listener[A], error) {
+func Listen[A Attacher](addr string, config *Config) (Listener, error) {
 	laddr, err := resolve(addr, true)
 	if err != nil {
 		return nil, err
 	}
 
-	rawl, err := rawtcp.Listen(laddr)
+	rawl, err := rawtcp.Listen(laddr, config.RawConnOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return NewListener[A](rawl, config)
+	return newListener[A](rawl, config)
 }
 
-func NewListener[A Attacher](l rawsock.Listener, config *Config) (*Listener[A], error) {
-	if err := config.Init(l.Addr().Addr()); err != nil {
+func NewListener[A Attacher](l rawsock.Listener, config *Config) (Listener, error) {
+	return newListener[A](l, config)
+}
+
+func newListener[A Attacher](l rawsock.Listener, config *Config) (*listener, error) {
+	if err := config.init(l.Addr().Addr()); err != nil {
 		return nil, err
 	}
-	var li = &Listener[A]{config: config, raw: l}
+	var li = &listener{config: config, raw: l, a: *(new(A))}
 	var err error
 
 	if li.stack, err = ustack.NewUstack(
-		link.NewList(64, config.MTU-Overhead[A]()), l.Addr().Addr(),
+		link.NewList(64, calcMTU[A](config)), l.Addr().Addr(),
 	); err != nil {
 		return nil, li.close(err)
 	}
-	// li.stack = utest.MustWrapPcap("server.pcap", li.stack)
+	if config.PcapBuiltinPath != "" {
+		li.stack = ustack.MustWrapPcap(li.stack, config.PcapBuiltinPath)
+	}
 
 	if li.l, err = gonet.ListenTCP(
 		li.stack, l.Addr(),
@@ -63,7 +71,7 @@ func NewListener[A Attacher](l rawsock.Listener, config *Config) (*Listener[A], 
 	return li, nil
 }
 
-func (l *Listener[A]) close(cause error) error {
+func (l *listener) close(cause error) error {
 	if l.closeErr.CompareAndSwap(nil, &net.ErrClosed) {
 		if l.l != nil {
 			if err := l.l.Close(); err != nil {
@@ -89,28 +97,36 @@ func (l *Listener[A]) close(cause error) error {
 	return *l.closeErr.Load()
 }
 
-func (l *Listener[A]) Accept() (*Conn[A], error) {
+func (l *listener) Accept() (Conn, error) {
 	return l.AcceptCtx(context.Background())
 }
 
-func (l *Listener[A]) AcceptCtx(ctx context.Context) (*Conn[A], error) {
+func (l *listener) AcceptCtx(ctx context.Context) (Conn, error) {
 	raw, err := l.raw.Accept() // todo: raw support context
 	if err != nil {
 		return nil, err
+	}
+
+	if l.config.PcapRawConnPath != "" {
+		raw, err = test.WrapPcap(raw, l.config.PcapRawConnPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ep, err := l.stack.LinkEndpoint(l.Addr().Port(), raw.RemoteAddr())
 	if err != nil {
 		return nil, err
 	}
-	conn, err := newConn[A](raw, ep, server, l.config)
-	if err != nil {
-		return nil, err
+
+	var conn = &conn{a: l.a.Builtin()}
+	if err := conn.init(raw, ep, server, l.config); err != nil {
+		return nil, conn.close(err)
 	}
 	conn.factory = &serverFactory{l: l.l, remote: conn.RemoteAddr()}
 	return conn, nil
 }
 
-func (l *Listener[A]) Addr() netip.AddrPort { return l.raw.Addr() }
-
-func (l *Listener[A]) Close() error { return l.close(nil) }
+func (l *listener) Addr() netip.AddrPort { return l.raw.Addr() }
+func (l *listener) MTU() int             { return l.config.MTU }
+func (l *listener) Close() error         { return l.close(nil) }

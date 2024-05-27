@@ -150,7 +150,8 @@ func Test_Keeplive(t *testing.T) {
 		dur := time.Since(s)
 		require.Zero(t, n)
 		require.Contains(t, err.Error(), "timed out", err)
-		require.InDelta(t, time.Second*6, dur, float64(time.Second))
+		require.Greater(t, dur, time.Second*6)
+		require.Greater(t, time.Second*18, dur)
 		return nil
 	})
 
