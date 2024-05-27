@@ -19,10 +19,8 @@ github.com/lysShub/divert-go v0.0.0-20240525230502-6f79596abd61 h1:qqarPA8zZe+Ln
 github.com/lysShub/divert-go v0.0.0-20240525230502-6f79596abd61/go.mod h1:OXuD4Q/Y84FyNiYy/sf9RVshvAC5/rvcHA6J7JvvtFM=
 github.com/lysShub/netkit v0.0.0-20240523071634-a634aa727e4f h1:45H4XCe9QYhyWuEmEb7wnmPP6+6JPq4bngYQeW0g574=
 github.com/lysShub/netkit v0.0.0-20240523071634-a634aa727e4f/go.mod h1:meJ+5h9/ek0ORSdEgtCx6NsvuAWQHITzkLuVDtL+2lc=
-github.com/lysShub/rawsock v0.0.0-20240526042157-00a185f3e450 h1:pBziC8t74Wg2sXW1JvOHWtzdjpbfbbp/sjPV1jXPLPc=
-github.com/lysShub/rawsock v0.0.0-20240526042157-00a185f3e450/go.mod h1:5qgsV9nwLBui5RhVBBFhzq3vvd8n2NEmkEEVt79gElc=
-github.com/lysShub/rawsock v0.0.0-20240526072017-bbcbc8a34f47 h1:kwiF1j5ADA1DqMZN/9Utt7CUbQNJzA6XUW3QGy456gc=
-github.com/lysShub/rawsock v0.0.0-20240526072017-bbcbc8a34f47/go.mod h1:5qgsV9nwLBui5RhVBBFhzq3vvd8n2NEmkEEVt79gElc=
+github.com/lysShub/rawsock v0.0.0-20240527082258-59559ac6d618 h1:6VHql6VkySxGvmCaUoRcG3RUegszli/M/yJqd7tZj+M=
+github.com/lysShub/rawsock v0.0.0-20240527082258-59559ac6d618/go.mod h1:5qgsV9nwLBui5RhVBBFhzq3vvd8n2NEmkEEVt79gElc=
 github.com/lysShub/wintun-go v0.0.0-20240410130619-383598c11ea1 h1:AV6Pt7nAFy3nvbRX9M8DOZ6gFSTEmq1DUNTIq2QoqeA=
 github.com/lysShub/wintun-go v0.0.0-20240410130619-383598c11ea1/go.mod h1:BCj6kcW5G30wkjtKulTQ83QKZutWuctHTroy+ciTWpI=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
