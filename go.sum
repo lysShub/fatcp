@@ -21,6 +21,8 @@ github.com/lysShub/netkit v0.0.0-20240523071634-a634aa727e4f h1:45H4XCe9QYhyWuEm
 github.com/lysShub/netkit v0.0.0-20240523071634-a634aa727e4f/go.mod h1:meJ+5h9/ek0ORSdEgtCx6NsvuAWQHITzkLuVDtL+2lc=
 github.com/lysShub/rawsock v0.0.0-20240527082258-59559ac6d618 h1:6VHql6VkySxGvmCaUoRcG3RUegszli/M/yJqd7tZj+M=
 github.com/lysShub/rawsock v0.0.0-20240527082258-59559ac6d618/go.mod h1:5qgsV9nwLBui5RhVBBFhzq3vvd8n2NEmkEEVt79gElc=
+github.com/lysShub/rawsock v0.0.0-20240527161428-8849e5547531 h1:oNrvNTvaHcAtNdYOjOJtiq57hX+55hnAJ5LPkzvoIlg=
+github.com/lysShub/rawsock v0.0.0-20240527161428-8849e5547531/go.mod h1:5qgsV9nwLBui5RhVBBFhzq3vvd8n2NEmkEEVt79gElc=
 github.com/lysShub/wintun-go v0.0.0-20240410130619-383598c11ea1 h1:AV6Pt7nAFy3nvbRX9M8DOZ6gFSTEmq1DUNTIq2QoqeA=
 github.com/lysShub/wintun-go v0.0.0-20240410130619-383598c11ea1/go.mod h1:BCj6kcW5G30wkjtKulTQ83QKZutWuctHTroy+ciTWpI=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
