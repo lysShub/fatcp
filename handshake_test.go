@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/lysShub/fatcp"
-	"github.com/lysShub/fatcp/crypto"
+	"github.com/lysShub/fatun/conn/crypto"
 	"github.com/lysShub/rawsock/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/lysShub/fatcp"
-	"github.com/lysShub/fatcp/crypto"
+	"github.com/lysShub/fatun/conn/crypto"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 

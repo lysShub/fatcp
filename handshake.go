@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lysShub/fatcp/crypto"
 	"github.com/lysShub/fatcp/faketcp"
+	"github.com/lysShub/fatun/conn/crypto"
 	"github.com/lysShub/fatun/ustack"
 	"github.com/lysShub/fatun/ustack/gonet"
 	"github.com/lysShub/netkit/debug"

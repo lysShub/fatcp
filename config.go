@@ -10,8 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/lysShub/fatcp/crypto"
 	fconn "github.com/lysShub/fatun/conn"
+	"github.com/lysShub/fatun/conn/crypto"
 	"github.com/lysShub/rawsock"
 )
 
