@@ -45,6 +45,6 @@ func (m *mocker) Decode(pkt *packet.Packet) error {
 	return nil
 }
 
-func (m *mocker) Reset(proto tcpip.TransportProtocolNumber, remote netip.Addr) fconn.Peer { panic("") }
-func (m *mocker) Protocol() tcpip.TransportProtocolNumber                                 { panic("") }
-func (m *mocker) Peer() netip.Addr                                                        { panic("") }
+func (m *mocker) Reset(proto tcpip.TransportProtocolNumber, dst netip.Addr) fconn.Peer { panic("") }
+func (m *mocker) Protocol() tcpip.TransportProtocolNumber                              { panic("") }
+func (m *mocker) Peer() netip.Addr                                                     { panic("") }
