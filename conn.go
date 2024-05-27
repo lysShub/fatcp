@@ -26,7 +26,7 @@ type conn struct {
 	config  *Config
 	raw     rawsock.RawConn
 	natPort uint16
-	role    fconn.Role
+	role    role
 	state   state
 	tinyCnt int
 
@@ -45,7 +45,7 @@ type conn struct {
 	closeErr  errorx.CloseErr
 }
 
-func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role fconn.Role, config *Config) error {
+func (c *conn) init(raw rawsock.RawConn, ep *ustack.LinkEndpoint, role role, config *Config) error {
 	c.config = config
 	c.raw = raw
 	c.role = role
@@ -203,9 +203,6 @@ func (c *conn) inboundBuitinPacket(tcp *packet.Packet) {
 	c.ep.Inbound(tcp)
 }
 
-func (c *conn) MTU() int                   { return c.config.MTU }
-func (c *conn) Role() fconn.Role           { return c.role }
-func (c *conn) Overhead() int              { return c.fake.Overhead() + c.a.Overhead() }
 func (c *conn) LocalAddr() netip.AddrPort  { return c.raw.LocalAddr() }
 func (c *conn) RemoteAddr() netip.AddrPort { return c.raw.RemoteAddr() }
 func (c *conn) Close() error               { return c.close(nil) }

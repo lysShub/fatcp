@@ -121,7 +121,7 @@ func (l *listener) AcceptCtx(ctx context.Context) (fconn.Conn, error) {
 	}
 
 	var c = &conn{a: l.a.Builtin()}
-	if err := c.init(raw, ep, fconn.Server, l.config); err != nil {
+	if err := c.init(raw, ep, server, l.config); err != nil {
 		return nil, c.close(err)
 	}
 	c.factory = &serverFactory{l: l.l, remote: c.RemoteAddr()}

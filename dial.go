@@ -71,7 +71,7 @@ func newConn[A fconn.Peer](raw rawsock.RawConn, config *Config) (*conn, error) {
 			return nil, c.close(err)
 		}
 	}
-	if err := c.init(raw, ep, fconn.Client, config); err != nil {
+	if err := c.init(raw, ep, client, config); err != nil {
 		return nil, c.close(err)
 	}
 	c.factory = &clientFactory{
