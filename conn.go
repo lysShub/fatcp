@@ -118,8 +118,8 @@ func (c *conn) outboundService() error {
 	}
 }
 
-// BuiltinTCP get builtin tcp connect, require call c.Recv asynchronous, at the same time.
-func (c *conn) BuiltinTCP(ctx context.Context) (net.Conn, error) {
+// BuiltinConn get builtin tcp connect, require call c.Recv asynchronous, at the same time.
+func (c *conn) BuiltinConn(ctx context.Context) (tcp net.Conn, err error) {
 	if err := c.handshake(ctx); err != nil {
 		return nil, c.close(err)
 	}

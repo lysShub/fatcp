@@ -3,7 +3,7 @@ module github.com/lysShub/fatcp
 go 1.22.0
 
 require (
-	github.com/lysShub/fatun v0.0.0-20240527214549-f76d203b3d7b
+	github.com/lysShub/fatun v0.0.0-20240528071310-1fe1c4ca201a
 	github.com/lysShub/netkit v0.0.0-20240523071634-a634aa727e4f
 	github.com/lysShub/rawsock v0.0.0-20240527161428-8849e5547531
 	github.com/pkg/errors v0.9.1
@@ -28,3 +28,5 @@ require (
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/lysShub/fatun => D:\OneDrive\code\go\fatun

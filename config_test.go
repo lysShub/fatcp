@@ -71,7 +71,7 @@ func Test_NotCrypto(t *testing.T) {
 			return nil
 		})
 
-		tcp, err := conn.BuiltinTCP(ctx)
+		tcp, err := conn.BuiltinConn(ctx)
 		require.NoError(t, err)
 		_, err = io.Copy(tcp, tcp)
 		require.Contains(t, []error{io.EOF, nil}, err)
@@ -93,7 +93,7 @@ func Test_NotCrypto(t *testing.T) {
 			return nil
 		})
 
-		tcp, err := conn.BuiltinTCP(ctx)
+		tcp, err := conn.BuiltinConn(ctx)
 		require.NoError(t, err)
 		rander := rand.New(rand.NewSource(0))
 		test.ValidPingPongConn(t, rander, tcp, 0xffff)
@@ -151,7 +151,7 @@ func Test_BuiltinPcapFile(t *testing.T) {
 			return nil
 		})
 
-		tcp, err := conn.BuiltinTCP(ctx)
+		tcp, err := conn.BuiltinConn(ctx)
 		require.NoError(t, err)
 		_, err = io.Copy(tcp, tcp)
 		require.Contains(t, []error{io.EOF, nil}, err)
@@ -173,7 +173,7 @@ func Test_BuiltinPcapFile(t *testing.T) {
 			return nil
 		})
 
-		tcp, err := conn.BuiltinTCP(ctx)
+		tcp, err := conn.BuiltinConn(ctx)
 		require.NoError(t, err)
 		rander := rand.New(rand.NewSource(0))
 		test.ValidPingPongConn(t, rander, tcp, 0xffff)

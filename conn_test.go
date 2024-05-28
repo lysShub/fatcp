@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/lysShub/fatcp"
-	"github.com/lysShub/fatun/conn/crypto"
+	"github.com/lysShub/fatcp/crypto"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -30,7 +30,7 @@ var sign = &fatcp.Sign{
 	},
 }
 
-func Test_BuiltinTCP_Connect(t *testing.T) {
+func Test_BuiltinConn_Connect(t *testing.T) {
 	// test builtin-tcp transmit data as normal tcp connect
 	var (
 		caddr = netip.AddrPortFrom(test.LocIP(), 19986)
@@ -66,7 +66,7 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 			return nil
 		})
 
-		tcp, err := conn.BuiltinTCP(ctx)
+		tcp, err := conn.BuiltinConn(ctx)
 		require.NoError(t, err)
 		_, err = io.Copy(tcp, tcp)
 		require.Contains(t, []error{io.EOF, nil}, err)
@@ -88,7 +88,7 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 			return nil
 		})
 
-		tcp, err := conn.BuiltinTCP(ctx)
+		tcp, err := conn.BuiltinConn(ctx)
 		require.NoError(t, err)
 		rander := rand.New(rand.NewSource(0))
 		test.ValidPingPongConn(t, rander, tcp, 0xffff)
@@ -99,7 +99,7 @@ func Test_BuiltinTCP_Connect(t *testing.T) {
 	eg.Wait()
 }
 
-func Test_BuiltinTCP_Keepalive(t *testing.T) {
+func Test_BuiltinConn_Keepalive(t *testing.T) {
 	// test builtin-tcp transmit data as normal tcp connect
 	var (
 		caddr = netip.AddrPortFrom(test.LocIP(), 19986)
@@ -136,7 +136,7 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 				return nil
 			})
 
-			tcp, err := conn.BuiltinTCP(ctx)
+			tcp, err := conn.BuiltinConn(ctx)
 			require.NoError(t, err)
 
 			io.ReadFull(tcp, make([]byte, 0xff))
@@ -160,7 +160,7 @@ func Test_BuiltinTCP_Keepalive(t *testing.T) {
 
 			handshakeCtx, cancel := context.WithTimeout(ctx, time.Second*5)
 			defer cancel()
-			tcp, err := conn.BuiltinTCP(handshakeCtx)
+			tcp, err := conn.BuiltinConn(handshakeCtx)
 			require.NoError(t, err)
 			n, err := tcp.Write(make([]byte, 0xff))
 			require.NoError(t, err)

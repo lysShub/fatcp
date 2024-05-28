@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"sync/atomic"
 
-	"github.com/lysShub/fatun/conn/crypto"
+	"github.com/lysShub/fatcp/crypto"
 	"github.com/lysShub/netkit/packet"
 	"github.com/stretchr/testify/require"
 

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/lysShub/fatcp"
-	"github.com/lysShub/fatun/conn/crypto"
+	"github.com/lysShub/fatcp/crypto"
 	"github.com/lysShub/rawsock/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -19,6 +19,7 @@ import (
 
 func Test_Handshake_Context_Cancel(t *testing.T) {
 	t.Skip("todo: rawsock support deadline")
+	t.Skip("Listener not support context")
 
 	t.Run("Handshake-Exceeded", func(t *testing.T) {
 		var (
@@ -53,9 +54,10 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 			require.NoError(t, err)
 			defer l.Close()
 
-			conn, err := l.AcceptCtx(ctx)
+			// conn, err := l.AcceptCtx(ctx)
+			conn, err := l.Accept()
 			require.NoError(t, err)
-			_, err = conn.BuiltinTCP(ctx)
+			_, err = conn.BuiltinConn(ctx)
 			require.True(t, errors.Is(err, context.DeadlineExceeded), err)
 			return nil
 		})
@@ -64,7 +66,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 		eg.Go(func() error {
 			conn, err := fatcp.NewConn[Mocker](c, cfg)
 			require.NoError(t, err)
-			_, err = conn.BuiltinTCP(ctx)
+			_, err = conn.BuiltinConn(ctx)
 			require.True(t, errors.Is(err, os.ErrDeadlineExceeded), err)
 			return nil
 		})
@@ -103,9 +105,10 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 			require.NoError(t, err)
 			defer l.Close()
 
-			conn, err := l.AcceptCtx(ctx)
+			// conn, err := l.AcceptCtx(ctx)
+			conn, err := l.Accept()
 			require.NoError(t, err)
-			_, err = conn.BuiltinTCP(ctx)
+			_, err = conn.BuiltinConn(ctx)
 			require.True(t, errors.Is(err, context.Canceled), err)
 			return nil
 		})
@@ -114,7 +117,7 @@ func Test_Handshake_Context_Cancel(t *testing.T) {
 		eg.Go(func() error {
 			conn, err := fatcp.NewConn[Mocker](c, cfg)
 			require.NoError(t, err)
-			_, err = conn.BuiltinTCP(ctx)
+			_, err = conn.BuiltinConn(ctx)
 
 			ok := errors.Is(err, os.ErrDeadlineExceeded) || errors.Is(err, context.Canceled)
 			require.True(t, ok, err)

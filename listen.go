@@ -129,5 +129,4 @@ func (l *listener) AcceptCtx(ctx context.Context) (fconn.Conn, error) {
 }
 
 func (l *listener) Addr() netip.AddrPort { return l.raw.Addr() }
-func (l *listener) MTU() int             { return l.config.MTU }
 func (l *listener) Close() error         { return l.close(nil) }
